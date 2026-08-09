@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0-candidate",
+  "source_run_id": "example-run",
+  "scope": {
+    "institution": "示例机构",
+    "department": "示例科室",
+    "disease_or_project": "示例病种",
+    "channel": "电话"
+  },
+  "promotion": {
+    "requested": true,
+    "coverage_gate_passed": true,
+    "evaluation_passed": true
+  },
+  "delta": {
+    "facts_upsert": [],
+    "sales_logic_upsert": [
+      {
+        "id": "stage-understand-001",
+        "stage": "深挖需求",
+        "goal": "听清患者经历和当前顾虑",
+        "signals": ["患者主动提到过去治疗失败"],
+        "judgment": "先确认真实顾虑，再决定是否推进邀约",
+        "actions": ["复述经历", "确认影响", "询问患者希望的下一步"],
+        "evidence_refs": ["CASE-EXAMPLE@00:01:00"]
+      }
+    ],
+    "rules_upsert": [
+      {
+        "id": "rule-understand-001",
+        "name": "先确认治疗经历再推进",
+        "when": "患者提到过去治疗失败",
+        "do": "先复述并确认失败经历，再进入价值解释",
+        "avoid": "立即报价格或直接承诺效果",
+        "evidence_refs": ["CASE-EXAMPLE@00:01:00"],
+        "counterexample_refs": ["CASE-EXAMPLE-COUNTER"],
+        "status": "active"
+      }
+    ],
+    "objections_upsert": [],
+    "faq_100_upsert": [],
+    "training_200_upsert": [],
+    "practice_scenarios_upsert": [],
+    "counterexamples_upsert": [],
+    "deprecate_rule_ids": []
+  },
+  "change_summary": ["新增深挖需求阶段动作卡"]
+}

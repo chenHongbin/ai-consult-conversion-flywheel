@@ -148,13 +148,30 @@ def main():
     for folder in SYSTEM_FOLDERS:
         ensure_dir(system / folder)
     ensure_dir(system / "团队档案")
+    ensure_dir(system / "当前能力包" / "versions")
+    write_if_missing(
+        system / "当前能力包" / "active.json",
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "status": "base_only",
+                "active_version": None,
+                "package_path": None,
+                "runtime_context_path": None,
+                "message": "首次蒸馏完成并通过测试后生成机构专属能力包",
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+    )
 
     profile = system / "来源配置.json"
     write_if_missing(
         profile,
         json.dumps(
             {
-                "version": "0.9",
+                "version": "1.3",
                 "workspace": str(root),
                 "runtime": {"preferred": ["workbuddy", "trae", "codex", "claude"]},
                 "sources": {
@@ -179,8 +196,8 @@ def main():
                     "catch_up_next_run": True,
                 },
                 "release": {
-                    "active_version": "v0.1",
-                    "candidate_version": "v0.9",
+                    "active_version": "base_only",
+                    "candidate_version": "v1.3",
                     "auto_publish": False,
                 },
             },
@@ -277,7 +294,7 @@ def main():
     )
     write_if_missing(
         root / "README_先看这里.md",
-        """# AI咨询转化飞轮工作区\n\n只记住一件事：把资料放进看起来最接近的文件夹即可，不需要先整理。\n\n{folder_lines}\n\n## 第一次使用\n\n1. 告诉 AI咨询转化飞轮：机构名称和要管理的科室。\n2. 选择使用本地文件夹、IMA，或两种都用。\n3. 先放 1 条录音、1 张聊天截图或 1 段聊天记录，直接说“帮我分析这条咨询”。\n4. 如果要蒸馏销冠，先说“蒸馏销冠完整销售逻辑和流程”，不要只提炼金句。\n5. 如果要管理团队，告诉我主管姓名和成员名单，直接说“建立我的团队档案”。\n6. 每天把新增资料放入对应员工的 `01_今天放这里`，晚上由 WorkBuddy/Codex 定时任务处理。\n\n## 团队管理文件夹\n\n{team_lines}\n\n当前团队主管：{manager_name}。\n\n新人训练资料在 `06_团队培训与反馈/01_新人培训`；流失、顾虑和销冠能力包在 `07_我的产出` 下的对应文件夹。会议录音放入 `08_团队管理/02_团队会议/01_今天放这里`；团队数据放入 `08_团队管理/03_团队数据/01_今天放这里`；报告在 `08_团队管理/04_团队报告`。日期、分类和命名由 Skill 自动处理。\n\n`_系统` 由 Skill 自动维护，不需要手动修改。未脱敏的原始资料只保存在当前工作区，不会自动进入通用 Skill 或发布包。\n""".format(folder_lines=folder_lines, team_lines=team_lines, manager_name=manager_name),
+        """# AI咨询转化飞轮工作区\n\n只记住一件事：把资料放进看起来最接近的文件夹即可，不需要先整理。首次说“蒸馏销冠”时，我会扫描当前工作空间里的全部候选资料。\n\n{folder_lines}\n\n## 第一次使用\n\n1. 告诉 AI咨询转化飞轮：机构名称和要管理的科室。\n2. 选择使用本地文件夹、IMA，或两种都用。\n3. 第一次说“蒸馏销冠完整销售逻辑和流程”，我会扫描并处理当前工作空间的全部录音、聊天记录、截图和文档。\n4. 如果只想看一条，明确说“只分析这一条”。\n5. 如果要管理团队，告诉我主管姓名和成员名单，直接说“建立我的团队档案”。\n6. 每天把新增资料放入对应员工的 `01_今天放这里`，晚上由 WorkBuddy/Codex 定时任务处理。\n\n## 团队管理文件夹\n\n{team_lines}\n\n当前团队主管：{manager_name}。\n\n新人训练资料在 `06_团队培训与反馈/01_新人培训`；流失、顾虑和销冠能力包在 `07_我的产出` 下的对应文件夹。会议录音放入 `08_团队管理/02_团队会议/01_今天放这里`；团队数据放入 `08_团队管理/03_团队数据/01_今天放这里`；报告在 `08_团队管理/04_团队报告`。日期、分类和命名由 Skill 自动处理。\n\n`_系统` 由 Skill 自动维护，不需要手动修改。未脱敏的原始资料只保存在当前工作区，不会自动进入通用 Skill 或发布包。\n""".format(folder_lines=folder_lines, team_lines=team_lines, manager_name=manager_name),
     )
 
     print(

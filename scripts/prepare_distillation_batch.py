@@ -36,14 +36,72 @@ def sha256(path):
 
 
 def infer(path):
+    """Infer routing metadata without excluding any readable material.
+
+    Folder names are hints only. They never establish a clinical or business
+    outcome. The model must still inspect the actual transcript and cite
+    evidence before treating a label as confirmed.
+    """
     value = str(path).lower()
     outcome = "待确认"
-    if any(x in value for x in ["未到", "未约", "爽约", "未预约"]):
+    outcome_provenance = "unknown"
+    if any(x in value for x in ["未到", "未约", "爽约", "未预约", "流失", "失联"]):
         outcome = "未到/未预约（路径标签，待确认）"
-    elif any(x in value for x in ["已到", "已约", "到院"]):
+        outcome_provenance = "folder_or_filename_label_only"
+    elif any(x in value for x in ["已到", "已约", "到院", "成交", "预约成功"]):
         outcome = "已约/已到（路径标签，待确认）"
+        outcome_provenance = "folder_or_filename_label_only"
+
+    training_signals = [
+        "培训", "内训", "会议", "策略", "复盘会", "课件", "课堂", "直播",
+        "方法论", "手册", "sop", "讲解", "产品打磨", "商务", "会议录音",
+    ]
+    positive_signals = ["优秀", "销冠", "红板", "好录音", "正向", "成功", "已到", "到院", "成交", "预约成功"]
+    negative_signals = ["失败", "黑板", "未到", "未约", "爽约", "流失", "失联", "投诉", "拒绝"]
+    comparison_signals = ["普通", "对照", "一般", "待改进", "复盘"]
+    patient_signals = ["患者", "咨询", "电话", "微信", "私信", "录音", "聊天", "对话", "线索"]
+
+    is_training = any(x in value for x in training_signals)
+    is_patient = any(x in value for x in patient_signals)
+    if is_training:
+        source_nature = "team_training_or_strategy"
+        sample_role = "methodology_reference"
+        analysis_route = "methodology_and_management"
+        result_weight = "context_only"
+        sample_weight = "context_only"
+    elif any(x in value for x in positive_signals):
+        source_nature = "patient_consultation" if is_patient else "unknown_material"
+        sample_role = "positive_reference"
+        analysis_route = "patient_case"
+        result_weight = "medium" if outcome_provenance != "unknown" else "low"
+        sample_weight = "high"
+    elif any(x in value for x in negative_signals):
+        source_nature = "patient_consultation" if is_patient else "unknown_material"
+        sample_role = "negative_reference"
+        analysis_route = "patient_case"
+        result_weight = "medium" if outcome_provenance != "unknown" else "low"
+        sample_weight = "high"
+    elif any(x in value for x in comparison_signals):
+        source_nature = "patient_consultation" if is_patient else "unknown_material"
+        sample_role = "comparison_case"
+        analysis_route = "patient_case"
+        result_weight = "medium"
+        sample_weight = "medium"
+    elif is_patient:
+        source_nature = "patient_consultation"
+        sample_role = "unknown_case"
+        analysis_route = "patient_case"
+        result_weight = "low"
+        sample_weight = "low"
+    else:
+        source_nature = "unknown_material"
+        sample_role = "unknown_case"
+        analysis_route = "general_material_review"
+        result_weight = "low"
+        sample_weight = "low"
+
     medium = "OCR文本" if "ocr" in value or "截图" in value else "转写文本"
-    return medium, outcome
+    return medium, outcome, outcome_provenance, source_nature, sample_role, result_weight, sample_weight, analysis_route
 
 
 def main():
@@ -61,7 +119,7 @@ def main():
             continue
         with io.open(str(source), "r", encoding="utf-8", errors="replace") as handle:
             raw = handle.read()
-        medium, outcome = infer(source)
+        medium, outcome, outcome_provenance, source_nature, sample_role, result_weight, sample_weight, analysis_route = infer(source)
         safe = redact(raw)
         truncated = len(safe) > args.max_chars
         if truncated:
@@ -71,15 +129,20 @@ def main():
         rows.append({
             "case_id": source_id,
             "source_id": source_id,
-            "source_nature": "real_material_pending_review",
+            "source_nature": source_nature,
+            "sample_role": sample_role,
+            "analysis_route": analysis_route,
+            "result_weight": result_weight,
+            "sample_weight": sample_weight,
             "source_hash": sha256(source),
             "source_path": rel,
             "medium": medium,
             "outcome": outcome,
-            "outcome_provenance": "folder_or_filename_label_only",
+            "outcome_provenance": outcome_provenance,
             "text": safe,
             "redaction_status": "automatic_pattern_redaction_review_required",
             "review_status": "human_review_required",
+            "inclusion_status": "included_pending_review",
             "split": "candidate",
             "truncated": truncated,
         })

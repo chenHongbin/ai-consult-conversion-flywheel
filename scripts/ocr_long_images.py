@@ -3,6 +3,7 @@
 """Slice long images and OCR every slice with local Tesseract."""
 
 import argparse
+import hashlib
 import io
 import json
 import os
@@ -14,6 +15,32 @@ from pathlib import Path
 from compat import ensure_dir, expand_path
 
 from slice_long_images import image_files, slice_one
+
+
+def sha256(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def load_previous(path):
+    previous = {}
+    if not path.is_file():
+        return previous
+    try:
+        with io.open(str(path), "r", encoding="utf-8") as handle:
+            for line in handle:
+                try:
+                    row = json.loads(line)
+                except ValueError:
+                    continue
+                if row.get("source") and row.get("source_hash"):
+                    previous[row["source"]] = row
+    except IOError:
+        return previous
+    return previous
 
 
 def main():
@@ -38,12 +65,18 @@ def main():
     input_path = expand_path(args.input)
     rows = []
     failures = []
+    previous_manifest = load_previous(output_root / "ocr_manifest.jsonl")
 
     for source in image_files(input_path):
+        source_hash = sha256(source)
+        previous = previous_manifest.get(str(source))
+        if previous and previous.get("source_hash") == source_hash and previous.get("status") in ("ok", "skipped_existing"):
+            rows.append(dict(previous, status="skipped_existing"))
+            continue
         try:
             parts = slice_one(source, input_path, slices_root, args.max_height, args.overlap)
         except Exception as exc:
-            failures.append({"source": str(source), "status": "slice_failed", "error": str(exc)})
+            failures.append({"source": str(source), "source_hash": source_hash, "status": "slice_failed", "error": str(exc)})
             continue
         for part in parts:
             slice_path = Path(part["slice"])
@@ -61,10 +94,10 @@ def main():
                 ensure_dir(text_path.parent)
                 with io.open(str(text_path), "w", encoding="utf-8") as handle:
                     handle.write(stdout)
-                rows.append(dict(part, text=str(text_path), ocr_engine="tesseract",
+                rows.append(dict(part, source_hash=source_hash, text=str(text_path), ocr_engine="tesseract",
                                  ocr_lang=args.lang, status="ok"))
             except Exception as exc:
-                failures.append(dict(part, status="ocr_failed", error=str(exc)))
+                failures.append(dict(part, source_hash=source_hash, status="ocr_failed", error=str(exc)))
 
     manifest = output_root / "ocr_manifest.jsonl"
     with io.open(str(manifest), "w", encoding="utf-8") as handle:
