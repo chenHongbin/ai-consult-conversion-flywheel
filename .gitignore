@@ -19,3 +19,4 @@ AI咨询转化飞轮_v*.skill
 *.xls
 *.csv
 *.jsonl
+!references/test-set/*.jsonl
