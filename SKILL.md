@@ -37,7 +37,7 @@ description: AI咨询转化飞轮：面向民营医疗机构咨询师与咨询�
 
 需要详细数据模型时读取 [knowledge-model.md](references/knowledge-model.md)；需要首次初始化或蒸馏时读取 [distillation-workflow.md](references/distillation-workflow.md)；需要分析、辅导或输出话术时读取 [analysis-and-coaching.md](references/analysis-and-coaching.md)；涉及脱敏、医疗边界或旧案例清洗时读取 [safety-and-sanitization.md](references/safety-and-sanitization.md)。
 
-需要咨询师前台话术、回访和陪练交互时读取 [consultant-front-door.md](references/consultant-front-door.md)；需要赖静茹老师方法论时读取 [lai-methodology.md](references/lai-methodology.md)；需要人物视角卡时读取 [perspective-lenses.md](references/perspective-lenses.md)；需要新人陪练时读取 [practice-coach.md](references/practice-coach.md)；需要团队管理、员工沟通、过程量、结果数据和周报/月度沟通时读取 [team-management.md](references/team-management.md)；需要按成员、日期、命名规范和夜间 Dream Cycle 工作时读取 [team-file-conventions.md](references/team-file-conventions.md)；需要生成或编辑咨询场景图片时读取 [visual-creative.md](references/visual-creative.md)；需要初始化本地/IMA资料源或持续蒸馏时读取 [workspace-onboarding.md](references/workspace-onboarding.md)、[source-ingestion.md](references/source-ingestion.md) 和 [dream-cycle.md](references/dream-cycle.md)。本 Skill 不内置任何机构示例知识库、真实录音、聊天截图或外部试跑报告；外部测试夹具只在 Skill 外部按需接入。
+需要咨询师前台话术、回访和陪练交互时读取 [consultant-front-door.md](references/consultant-front-door.md)；需要赖静茹老师方法论时读取 [lai-methodology.md](references/lai-methodology.md)；需要人物视角卡时读取 [perspective-lenses.md](references/perspective-lenses.md)；需要新人陪练时读取 [practice-coach.md](references/practice-coach.md)；需要团队管理、员工沟通、过程量、结果数据和周报/月度沟通时读取 [team-management.md](references/team-management.md)；需要按成员、日期、命名规范和夜间 Dream Cycle 工作时读取 [team-file-conventions.md](references/team-file-conventions.md)；需要生成或编辑咨询场景图片时读取 [visual-creative.md](references/visual-creative.md)；需要初始化本地/IMA资料源或持续蒸馏时读取 [workspace-onboarding.md](references/workspace-onboarding.md)、[source-ingestion.md](references/source-ingestion.md)、[dream-cycle.md](references/dream-cycle.md) 和 [initialization-and-distillation-prompts.md](references/initialization-and-distillation-prompts.md)。本 Skill 不内置任何机构示例知识库、真实录音、聊天截图或外部试跑报告；外部测试夹具只在 Skill 外部按需接入。
 
 处理通用咨询方法时读取 [consultation-base.md](references/consultation-base.md)。它是从历史培训课件和案例中去身份化、去机构化后形成的基础能力底座，不代表任何单一机构的事实。
 
@@ -315,7 +315,7 @@ description: AI咨询转化飞轮：面向民营医疗机构咨询师与咨询�
 
 每次反馈都记录为“保留、修改、拒绝或待验证”。只有满足以下条件，经验才可晋升为机构规则：有原始证据、有适用范围、有反例或限制、通过合规检查、得到管理者确认，并通过固定测试案例。
 
-建议能力包按版本管理：`v0.1 初始化`、`v0.2 首轮蒸馏`、`v0.3 反馈更新`、`v0.4 团队管理与结果验证`、`v0.5 成员纵向档案与夜间自动化`、`v0.6 前台极简`、`v0.7 后台个人档案归档与夜间队列接通`。保留旧版本，支持回看和回滚；不要直接覆盖历史规则。
+建议能力包按版本管理：`v0.1 初始化`、`v0.2 首轮蒸馏`、`v0.3 反馈更新`、`v0.4 团队管理与结果验证`、`v0.5 成员纵向档案与夜间自动化`、`v0.6 前台极简`、`v0.7 后台个人档案归档与夜间队列接通`、`v0.8 双入口初始化与咨询销冠蒸馏提示词`。保留旧版本，支持回看和回滚；不要直接覆盖历史规则。
 
 机构事实还要记录生效日期、失效日期、责任人和复核周期。医生、价格、项目、优惠或流程变化时，暂停引用相关规则，提醒管理者重新确认。
 

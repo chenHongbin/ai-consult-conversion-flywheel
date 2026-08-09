@@ -138,7 +138,7 @@ def main():
         profile,
         json.dumps(
             {
-                "version": "0.7",
+                "version": "0.8",
                 "workspace": str(root),
                 "runtime": {"preferred": ["workbuddy", "trae", "codex", "claude"]},
                 "sources": {
@@ -164,7 +164,7 @@ def main():
                 },
                 "release": {
                     "active_version": "v0.1",
-                    "candidate_version": "v0.7",
+                    "candidate_version": "v0.8",
                     "auto_publish": False,
                 },
             },
@@ -261,7 +261,7 @@ def main():
     )
     write_if_missing(
         root / "README_先看这里.md",
-        """# 咨询转化工作区\n\n只记住一件事：把资料放进看起来最接近的文件夹即可，不需要先整理。\n\n{folder_lines}\n\n## 第一次使用\n\n1. 告诉 Skill：机构名称和要管理的科室。\n2. 选择使用本地文件夹、IMA，或两种都用。\n3. 先放 1 条录音、1 张聊天截图或 1 段聊天记录，直接说“帮我分析这条咨询”。\n4. 如果要管理团队，告诉我主管姓名和成员名单，直接说“建立我的团队档案”。\n5. 每天把新增资料放入对应员工的 `01_今天放这里`，晚上由 WorkBuddy/Codex 定时任务处理。\n\n## 团队管理文件夹\n\n{team_lines}\n\n当前团队主管：{manager_name}。\n\n会议录音放入 `08_团队管理/02_团队会议/01_今天放这里`；团队数据放入 `08_团队管理/03_团队数据/01_今天放这里`；报告在 `08_团队管理/04_团队报告`。日期、分类和命名由 Skill 自动处理。\n\n`_系统` 由 Skill 自动维护，不需要手动修改。未脱敏的原始资料只保存在当前工作区，不会自动进入通用 Skill 或发布包。\n""".format(folder_lines=folder_lines, team_lines=team_lines, manager_name=manager_name),
+        """# AI咨询转化飞轮工作区\n\n只记住一件事：把资料放进看起来最接近的文件夹即可，不需要先整理。\n\n{folder_lines}\n\n## 第一次使用\n\n1. 告诉 AI咨询转化飞轮：机构名称和要管理的科室。\n2. 选择使用本地文件夹、IMA，或两种都用。\n3. 先放 1 条录音、1 张聊天截图或 1 段聊天记录，直接说“帮我分析这条咨询”。\n4. 如果要管理团队，告诉我主管姓名和成员名单，直接说“建立我的团队档案”。\n5. 每天把新增资料放入对应员工的 `01_今天放这里`，晚上由 WorkBuddy/Codex 定时任务处理。\n\n## 团队管理文件夹\n\n{team_lines}\n\n当前团队主管：{manager_name}。\n\n会议录音放入 `08_团队管理/02_团队会议/01_今天放这里`；团队数据放入 `08_团队管理/03_团队数据/01_今天放这里`；报告在 `08_团队管理/04_团队报告`。日期、分类和命名由 Skill 自动处理。\n\n`_系统` 由 Skill 自动维护，不需要手动修改。未脱敏的原始资料只保存在当前工作区，不会自动进入通用 Skill 或发布包。\n""".format(folder_lines=folder_lines, team_lines=team_lines, manager_name=manager_name),
     )
 
     print(

@@ -1,5 +1,7 @@
 # 初始化与团队蒸馏流程
 
+面向用户的双入口操作和逐步提示词见 [initialization-and-distillation-prompts.md](initialization-and-distillation-prompts.md)。本文件保留蒸馏规则和状态闸门；用户不需要理解内部模块名。
+
 ## 初始化状态
 
 使用以下状态帮助管理者理解进度：
