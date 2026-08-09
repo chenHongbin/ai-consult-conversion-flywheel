@@ -1,0 +1,68 @@
+{
+  "version": 3,
+  "projectId": "fever-education-demo",
+  "topic": "孩子发热什么时候需要就医",
+  "mode": "auto",
+  "audience": "有儿童发热照护需求的家长",
+  "goal": "看懂一般观察要点，并在出现危险信号时及时寻求专业评估",
+  "coreClaim": "判断是否需要就医，不能只看体温数字",
+  "medical": {
+    "reviewStatus": "review-required",
+    "privacyChecked": true,
+    "facts": [
+      "示例只演示视觉结构，不提供个体化诊疗建议"
+    ],
+    "sources": [],
+    "publishNote": "课程结构演示｜医学内容发布前需专业复核"
+  },
+  "brand": {
+    "name": "博润内容训练",
+    "primaryColor": "",
+    "accentColor": ""
+  },
+  "visualMaster": {
+    "style": "patient-editorial",
+    "seriesLabel": "PARENT CARE NOTE",
+    "pageNumber": true,
+    "locked": true
+  },
+  "deliverables": [
+    {
+      "platform": "xhs",
+      "pages": [
+        {
+          "id": "01",
+          "role": "hook",
+          "title": "孩子发热，别只盯体温",
+          "subtitle": "真正需要观察的是精神状态、呼吸、进食饮水和持续变化。",
+          "points": [],
+          "visualPrompt": "温暖的亲子照护场景与抽象医疗观察符号，非真实患者，标题区域保持干净"
+        },
+        {
+          "id": "02",
+          "role": "misconception",
+          "title": "一个数字，不等于全部风险",
+          "subtitle": "课程结构示例，不替代医生判断。",
+          "points": [
+            "只反复量体温，忽略整体状态",
+            "根据网络经验自行给具体孩子下诊断",
+            "同时记录精神、呼吸和进食饮水变化",
+            "拿不准或状态变差时及时寻求专业评估"
+          ]
+        },
+        {
+          "id": "03",
+          "role": "checklist",
+          "title": "先记下这四类变化",
+          "subtitle": "带着连续观察信息沟通，比只报一个温度更有帮助。",
+          "points": [
+            "精神状态有没有明显变化",
+            "呼吸是否和平时不同",
+            "进食饮水和排尿情况",
+            "症状持续时间与变化趋势"
+          ]
+        }
+      ]
+    }
+  ]
+}

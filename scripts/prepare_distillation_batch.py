@@ -8,6 +8,7 @@ import io
 import json
 import os
 import re
+import unicodedata
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
@@ -17,6 +18,11 @@ PHONE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
 ID_CARD = re.compile(r"(?<!\d)\d{17}[\dXx](?!\d)")
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 WECHAT = re.compile(r"(微信号|微信|wxid)\s*[:：]?\s*[A-Za-z][A-Za-z0-9_-]{5,}", re.I)
+
+DERIVED_PARTS = {
+    "转写与OCR", "案例标准化", "资料索引", "蒸馏任务", "蒸馏候选",
+    "患者洞察候选", "当前能力包", "当前机构知识", "机构知识候选",
+}
 
 
 def redact(text):
@@ -33,6 +39,60 @@ def sha256(path):
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def normalized_text(text):
+    value = unicodedata.normalize("NFKC", text or "")
+    value = redact(value).lower()
+    value = re.sub(r"\s+", "", value)
+    return value
+
+
+def is_derived(source, root):
+    try:
+        relative = source.relative_to(root)
+    except ValueError:
+        return False
+    parts = set(relative.parts)
+    return "_系统" in parts and bool(parts.intersection(DERIVED_PARTS))
+
+
+def derived_source_map(input_root):
+    """Map derived text back to its original source and quality metadata.
+
+    OCR, YouNavi transcripts and document extraction all use a manifest. The
+    batch must preserve that link so a model can cite the original recording,
+    image or document instead of treating a derived text file as the source.
+    """
+    mapping = {}
+    manifests = []
+    for name, key in (
+        ("ocr_manifest.jsonl", "text"),
+        ("transcript_manifest.jsonl", "transcript"),
+        ("extraction_manifest.jsonl", "text"),
+    ):
+        # Depending on the input directory, a manifest lives either beside
+        # the derived files (transcripts/documents) or one directory above
+        # them (OCR text is nested under OCR/text).
+        for candidate in (input_root / name, input_root.parent / name):
+            if candidate not in [item[0] for item in manifests]:
+                manifests.append((candidate, key))
+    for manifest, derived_key in manifests:
+        if not manifest.is_file():
+            continue
+        try:
+            with io.open(str(manifest), "r", encoding="utf-8") as handle:
+                for line in handle:
+                    try:
+                        row = json.loads(line)
+                    except ValueError:
+                        continue
+                    derived = row.get(derived_key)
+                    if derived and row.get("source"):
+                        mapping[str(Path(derived).resolve())] = row
+        except IOError:
+            continue
+    return mapping
 
 
 def infer(path):
@@ -106,27 +166,52 @@ def infer(path):
 
 def main():
     parser = argparse.ArgumentParser(description="Build a batch manifest from transcripts and OCR text.")
-    parser.add_argument("input", help="workspace or directory containing txt files")
+    parser.add_argument("inputs", nargs="+", help="workspace or directories containing txt files")
     parser.add_argument("--output", required=True, help="distillation-batch.jsonl path")
     parser.add_argument("--max-chars", type=int, default=30000)
     args = parser.parse_args()
-    root = expand_path(args.input)
+    input_roots = [expand_path(value) for value in args.inputs]
     output = expand_path(args.output)
     ensure_dir(output.parent)
     rows = []
-    for source in sorted(root.rglob("*.txt")):
-        if source.resolve() == output:
+    clusters = {}
+    for input_root in input_roots:
+        if not input_root.is_dir():
             continue
-        with io.open(str(source), "r", encoding="utf-8", errors="replace") as handle:
-            raw = handle.read()
-        medium, outcome, outcome_provenance, source_nature, sample_role, result_weight, sample_weight, analysis_route = infer(source)
-        safe = redact(raw)
-        truncated = len(safe) > args.max_chars
-        if truncated:
-            safe = safe[:args.max_chars] + "\n[文本已截断，需回到原始证据继续核对]"
-        rel = str(source.relative_to(root))
-        source_id = "batch-" + hashlib.sha1(rel.encode("utf-8")).hexdigest()[:12]
-        rows.append({
+        source_map = derived_source_map(input_root)
+        for source in sorted(input_root.rglob("*.txt")):
+            if source.resolve() == output:
+                continue
+            if is_derived(source, input_root):
+                continue
+            with io.open(str(source), "r", encoding="utf-8", errors="replace") as handle:
+                raw = handle.read()
+            # An OCR engine can return success with an empty text file. Keep
+            # that evidence in the OCR manifest for coverage, but do not put
+            # an empty case into the language-model distillation batch.
+            if not raw.strip():
+                continue
+            safe = redact(raw)
+            truncated = len(safe) > args.max_chars
+            if truncated:
+                safe = safe[:args.max_chars] + "\n[文本已截断，需回到原始证据继续核对]"
+            relative_value = str(source.relative_to(input_root))
+            rel = relative_value if len(input_roots) == 1 else str(input_root.name + "/" + relative_value)
+            source_id = "batch-" + hashlib.sha1(rel.encode("utf-8")).hexdigest()[:12]
+            derived_meta = source_map.get(str(source.resolve())) or {}
+            original_source = derived_meta.get("source") if isinstance(derived_meta, dict) else derived_meta
+            inference_path = Path(original_source) if original_source else source
+            medium, outcome, outcome_provenance, source_nature, sample_role, result_weight, sample_weight, analysis_route = infer(inference_path)
+            quality = derived_meta.get("ocr_quality") if isinstance(derived_meta, dict) else None
+            if not quality and isinstance(derived_meta, dict):
+                quality = "unknown" if derived_meta.get("status") in ("failed", "slice_failed", "ocr_failed") else "processed"
+            quality = quality or ("unknown" if original_source else "text")
+            weight = {"high": 1.0, "medium": 0.6, "low": 0.2, "unknown": 0.5, "text": 0.7}.get(quality, 0.5)
+            normalized_hash = hashlib.sha1(normalized_text(raw).encode("utf-8")).hexdigest()[:16]
+            dedup_cluster_id = "dedup-" + normalized_hash
+            duplicate_index = len(clusters.get(dedup_cluster_id, []))
+            clusters.setdefault(dedup_cluster_id, []).append(source_id)
+            rows.append({
             "case_id": source_id,
             "source_id": source_id,
             "source_nature": source_nature,
@@ -135,17 +220,32 @@ def main():
             "result_weight": result_weight,
             "sample_weight": sample_weight,
             "source_hash": sha256(source),
+            "dedup_cluster_id": dedup_cluster_id,
+            "duplicate_index": duplicate_index,
+            "independent_case": duplicate_index == 0,
+            "episode_id": "episode-" + normalized_hash,
             "source_path": rel,
+            "derived_from_source": original_source,
             "medium": medium,
             "outcome": outcome,
             "outcome_provenance": outcome_provenance,
             "text": safe,
-            "redaction_status": "automatic_pattern_redaction_review_required",
-            "review_status": "human_review_required",
-            "inclusion_status": "included_pending_review",
-            "split": "candidate",
-            "truncated": truncated,
-        })
+            "redaction_status": "automatic_pattern_redaction",
+            "consent_status": "unknown",
+            "privacy_risk": "automatic_screening_required",
+            "transcript_quality": quality,
+            "evidence_weight": weight,
+            "ocr_quality_score": derived_meta.get("ocr_quality_score") if isinstance(derived_meta, dict) else None,
+            "derived_engine": derived_meta.get("engine") or derived_meta.get("ocr_engine") if isinstance(derived_meta, dict) else None,
+            "derived_status": derived_meta.get("status") if isinstance(derived_meta, dict) else None,
+            "label_confidence": "unknown",
+            "behavior_confidence": "unknown",
+            "outcome_confidence": "unknown",
+            "review_status": "auto_quarantined" if quality == "low" else "auto_processed",
+            "inclusion_status": "included_with_weight" if quality != "low" else "stored_not_used_as_sole_evidence",
+                "split": "candidate",
+                "truncated": truncated,
+            })
     with io.open(str(output), "w", encoding="utf-8") as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")

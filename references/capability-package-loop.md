@@ -51,7 +51,7 @@
 3. **双轨候选蒸馏**：模型读取当前能力包和当前机构知识、本轮增量，分别输出 `candidate.json` 和 `knowledge-candidate.json`；
 4. **分别合并**：咨询规则按规则 ID、阶段和问题 ID 合并；机构知识按知识 ID、实体和范围合并；
 5. **分别验证**：咨询能力检查证据、反例、授权、隐私、医疗边界和固定测试；机构知识增加事实来源、冲突和有效期检查；
-6. **分别发布**：生成两套新版本，保留旧版本，分别更新两个 `active.json` 指针；
+6. **统一发布**：三类候选分别写回后，使用 `scripts/publish_release.py` 将咨询能力、机构知识和患者洞察绑定为一个原子 release；保留旧 release，不让三类 `active.json` 单独漂移；
 7. **运行**：下一次咨询分析同时读取能力 `runtime-context.md` 和机构知识 `knowledge-runtime.md`；
 8. **反馈**：管理者说“保留、修改或废弃这条规则”，写入 `feedback.jsonl`，成为下一轮增量蒸馏输入。
 
@@ -112,7 +112,7 @@
 回滚只改变 `active.json` 的指针，不删除任何版本和原始证据。这样新一轮能力变差时，可以立即恢复上一版：
 
 ```bash
-python3 scripts/rollback_capability.py <工作空间根目录> --previous
+python3 scripts/rollback_release.py <工作空间根目录> --previous
 ```
 
 ## 团队发布
@@ -126,4 +126,4 @@ python3 scripts/build_team_skill_package.py <工作空间根目录> \
   --department <科室名称>
 ```
 
-生成的 `.skill` 包含基础 Skill、`institution-pack/package.json` 和已确认的 `institution-pack/knowledge.json`，团队成员只安装这一个包即可使用机构最新能力。包内只放已发布的结构化能力和运行时上下文，不放原始录音、微信、患者身份信息、管理者私有资料、待确认知识或候选规则。
+生成的 `.skill` 包含基础 Skill、已绑定 release 的 `institution-pack/package.json`、已确认机构知识和患者洞察运行时，团队成员只安装这一个包即可使用机构最新能力。包内只放已发布的结构化能力和运行时上下文，不放原始录音、微信、患者身份信息、管理者私有资料、待确认知识或候选规则。没有统一 release 时，构建脚本应拒绝生成团队包。

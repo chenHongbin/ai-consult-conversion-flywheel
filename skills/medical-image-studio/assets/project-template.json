@@ -1,0 +1,44 @@
+{
+  "version": 3,
+  "projectId": "replace-with-short-project-id",
+  "topic": "这里填写医疗主题",
+  "mode": "auto",
+  "audience": "目标读者",
+  "goal": "读者看完后要理解或采取什么行动",
+  "coreClaim": "一套内容只保留一个核心结论",
+  "medical": {
+    "reviewStatus": "review-required",
+    "privacyChecked": true,
+    "facts": [],
+    "sources": [],
+    "publishNote": "AI示意图，发布前请由医生或医学编辑复核"
+  },
+  "brand": {
+    "name": "",
+    "primaryColor": "",
+    "accentColor": ""
+  },
+  "visualMaster": {
+    "style": "patient-editorial",
+    "seriesLabel": "PATIENT EDUCATION",
+    "pageNumber": true,
+    "locked": true
+  },
+  "deliverables": [
+    {
+      "platform": "xhs",
+      "ratio": "3:4",
+      "pages": [
+        {
+          "id": "01",
+          "role": "hook",
+          "title": "14字以内标题",
+          "subtitle": "一句解释",
+          "body": "",
+          "points": [],
+          "visualPrompt": "补充主体、构图、场景、材质或光线要求；准确文字由 title、subtitle 和 points 字段提供"
+        }
+      ]
+    }
+  ]
+}

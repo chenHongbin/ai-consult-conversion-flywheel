@@ -39,6 +39,9 @@ IGNORED_PARTS = {
 GENERATED_OUTPUT_PARTS = {
     "07_我的产出", "04_团队报告", "03_个人报告", "04_团队自动化",
 }
+GENERATED_SOURCE_NAMES = {
+    "README_先看这里.md", "过程量数据模板.csv", "结果数据模板.csv",
+}
 SIGNAL_WORDS = (
     "咨询", "录音", "到院", "未到", "未预约", "爽约", "优秀", "销冠",
     "微信", "聊天", "患者", "客资", "痛风", "银屑", "白癜", "科室",
@@ -104,6 +107,8 @@ def is_ignored(path, root):
     # Generated reports are not source evidence. Keep raw material folders in
     # 08_团队管理 and 01-06, but never feed prior reports back into the loop.
     if "咨询转化工作区" in parts and any(part in GENERATED_OUTPUT_PARTS for part in parts):
+        return True
+    if path.name in GENERATED_SOURCE_NAMES:
         return True
     if path.name.startswith("~") or path.suffix.lower() in {".tmp", ".part", ".crdownload"}:
         return True
@@ -182,6 +187,37 @@ def derived_files(derived_dirs):
         for path in directory.rglob("*.txt"):
             if path.is_file() and path.stat().st_size > 0:
                 result.setdefault(path.stem.lower(), []).append(str(path))
+        # OCR stores one text file per slice. Use the processing manifest to
+        # also index each derived text under the original source stem, so
+        # coverage and evidence links do not stop at part-001 filenames.
+        manifests = []
+        for name in ("ocr_manifest.jsonl", "transcript_manifest.jsonl", "extraction_manifest.jsonl"):
+            for candidate in (directory / name, directory.parent / name):
+                if candidate not in manifests:
+                    manifests.append(candidate)
+        for manifest in manifests:
+            if not manifest.is_file():
+                continue
+            try:
+                with io.open(str(manifest), "r", encoding="utf-8") as handle:
+                    for line in handle:
+                        try:
+                            row = json.loads(line)
+                        except ValueError:
+                            continue
+                        text_path = row.get("text") or row.get("transcript")
+                        source_path = row.get("source")
+                        if not source_path:
+                            continue
+                        if row.get("status") in ("failed", "slice_failed", "ocr_failed"):
+                            result.setdefault("__failed__" + Path(source_path).stem.lower(), []).append(str(source_path))
+                            continue
+                        if row.get("status") not in ("ok", "skipped_existing") or not text_path:
+                            continue
+                        if Path(text_path).is_file():
+                            result.setdefault(Path(source_path).stem.lower(), []).append(str(text_path))
+            except IOError:
+                pass
     return result
 
 
@@ -193,6 +229,8 @@ def pair_derived(row, source_path, derived):
     if sidecar.is_file() and sidecar.stat().st_size > 0:
         matches.append(str(sidecar))
     if not matches:
+        if derived.get("__failed__" + source_path.stem.lower()):
+            row["derived_status"] = "failed_with_record"
         return row
     row["derived_text_paths"] = sorted(set(matches))
     row["derived_status"] = "available"
@@ -206,11 +244,17 @@ def processing_status(row):
         return "review_scope"
     kind = row.get("material_type")
     if kind == "audio":
+        if row.get("derived_status") == "failed_with_record":
+            return "processed_with_failure"
         return "ready_for_standardization" if row.get("derived_status") == "available" else "pending_transcription"
     if kind == "chat_image_or_attachment":
+        if row.get("derived_status") == "failed_with_record":
+            return "processed_with_failure"
         return "ready_for_standardization" if row.get("derived_status") == "available" else "pending_ocr"
     if kind == "document_or_data":
-        return "pending_document_extraction"
+        if row.get("derived_status") == "failed_with_record":
+            return "processed_with_failure"
+        return "ready_for_standardization" if row.get("derived_status") == "available" else "pending_document_extraction"
     return "ready_for_standardization"
 
 
@@ -223,6 +267,7 @@ def build_report(rows, mode, root, run_at):
     pending = sum(counts.get(key, 0) for key in (
         "pending_transcription", "pending_ocr", "pending_document_extraction"))
     failed = counts.get("failed_to_inventory", 0)
+    processing_warnings = counts.get("processed_with_failure", 0)
     ready = counts.get("ready_for_standardization", 0)
     full_ready = pending == 0 and failed == 0 and len(candidates) > 0
     return {
@@ -235,6 +280,7 @@ def build_report(rows, mode, root, run_at):
         "ready_for_standardization": ready,
         "pending": pending,
         "failed": failed,
+        "processing_warnings": processing_warnings,
         "full_processing_ready": full_ready,
         "gate": "ready_for_agent_distillation" if full_ready else "partial_ready_pending_processing",
         "rule": "Never label a partial batch as a full institutional champion package.",

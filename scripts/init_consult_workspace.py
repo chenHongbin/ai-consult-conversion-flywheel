@@ -61,6 +61,16 @@ OUTPUT_FOLDERS = [
     ("02_客户顾虑与标准回应", "客户常见问题、顾虑知识卡和回应结构"),
     ("03_销冠蒸馏能力包", "销冠完整销售逻辑、流程、动作卡和版本"),
     ("04_咨询分析与陪练", "咨询复盘卡、陪练结果和跟进建议"),
+    ("05_患者决策洞察与陪练", "患者决策状态、常见疑义、合成场景和训练建议"),
+    ("06_咨询视觉素材", "朋友圈配图、微信跟进素材、案例示意、环境示意和培训视觉卡"),
+]
+
+VISUAL_OUTPUT_FOLDERS = [
+    ("01_朋友圈文案与配图", "朋友圈短文案和配套图片"),
+    ("02_微信跟进素材", "当前咨询下一步微信文案和配图"),
+    ("03_案例与过程示意", "匿名案例示意和过程解释图"),
+    ("04_医院环境与医生科普", "环境示意、医生科普和机构品牌素材"),
+    ("05_团队培训视觉卡", "普通/优化回复对比和动作拆解图"),
 ]
 
 SYSTEM_FOLDERS = [
@@ -70,11 +80,14 @@ SYSTEM_FOLDERS = [
     "蒸馏候选",
     "当前能力包",
     "当前机构知识",
+    "患者洞察",
     "机构知识候选",
     "评估集",
     "来源记录",
     "失败记录",
     "自动化",
+    "发布",
+    "视觉生成",
 ]
 
 
@@ -129,6 +142,8 @@ def main():
         ensure_dir(root / "06_团队培训与反馈" / folder)
     for folder, _ in OUTPUT_FOLDERS:
         ensure_dir(root / "07_我的产出" / folder)
+    for folder, _ in VISUAL_OUTPUT_FOLDERS:
+        ensure_dir(root / "07_我的产出" / "06_咨询视觉素材" / folder)
     team_root = root / "08_团队管理"
     for folder, _ in TEAM_ROOT_FOLDERS:
         ensure_dir(team_root / folder)
@@ -152,6 +167,23 @@ def main():
     ensure_dir(system / "团队档案")
     ensure_dir(system / "当前能力包" / "versions")
     ensure_dir(system / "当前机构知识" / "versions")
+    ensure_dir(system / "患者洞察" / "versions")
+    ensure_dir(system / "发布" / "versions")
+    write_if_missing(
+        system / "发布" / "active.json",
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "status": "base_only",
+                "release_id": None,
+                "release_version": None,
+                "message": "三类运行时组件完成审核后，由统一发布流程生成原子版本",
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+    )
     write_if_missing(
         system / "当前机构知识" / "active.json",
         json.dumps(
@@ -186,13 +218,29 @@ def main():
         )
         + "\n",
     )
+    write_if_missing(
+        system / "患者洞察" / "active.json",
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "status": "base_only",
+                "active_version": None,
+                "package_path": None,
+                "runtime_context_path": None,
+                "message": "完成案例去重、疑义提取和审核后生成患者决策洞察",
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+    )
 
     profile = system / "来源配置.json"
     write_if_missing(
         profile,
         json.dumps(
             {
-                "version": "1.4",
+                "version": "1.7",
                 "workspace": str(root),
                 "runtime": {"preferred": ["workbuddy", "trae", "codex", "claude"]},
                 "sources": {
@@ -218,8 +266,14 @@ def main():
                 },
                 "release": {
                     "active_version": "base_only",
-                    "candidate_version": "v1.4",
+                    "candidate_version": "v1.7",
                     "auto_publish": False,
+                },
+                "patient_insights": {
+                    "enabled": True,
+                    "mode": "aggregate_decision_states_only",
+                    "active_version": "base_only",
+                    "publish_requires": ["evidence", "counterexamples", "privacy_review", "manager_review", "fixed_test"],
                 },
             },
             ensure_ascii=False,

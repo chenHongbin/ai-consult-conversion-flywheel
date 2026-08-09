@@ -7,6 +7,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -15,6 +16,24 @@ from pathlib import Path
 from compat import ensure_dir, expand_path
 
 from slice_long_images import image_files, slice_one
+
+
+def assess_ocr_quality(text):
+    compact = re.sub(r"\s+", "", text or "")
+    if not compact:
+        return {"quality": "low", "score": 0.0, "reason": "empty_text"}
+    noise = len(re.findall(r"[�□■�]", compact))
+    allowed = len(re.findall(r"[\u3400-\u9fffA-Za-z0-9，。！？、：；（）《》“”‘’\-—_.,!?():;\[\]{}]", compact))
+    noise_ratio = noise / float(len(compact))
+    readable_ratio = allowed / float(len(compact))
+    score = max(0.0, min(1.0, readable_ratio - noise_ratio * 0.8))
+    if len(compact) < 12 or noise_ratio > 0.25 or score < 0.45:
+        quality = "low"
+    elif score < 0.75:
+        quality = "medium"
+    else:
+        quality = "high"
+    return {"quality": quality, "score": round(score, 3), "reason": "automatic_text_quality"}
 
 
 def sha256(path):
@@ -82,7 +101,12 @@ def main():
             slice_path = Path(part["slice"])
             try:
                 proc = subprocess.Popen(
-                    [tesseract, str(slice_path), "stdout", "-l", args.lang, "--psm", str(args.psm)],
+                    # The bundled macOS Tesseract build used in some learner
+                    # environments mishandles absolute input paths. Running
+                    # from the slice directory with a relative ASCII filename
+                    # is equivalent and much more reliable.
+                    [tesseract, slice_path.name, "stdout", "-l", args.lang, "--psm", str(args.psm)],
+                    cwd=str(slice_path.parent),
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 )
                 stdout, stderr = proc.communicate()
@@ -90,12 +114,14 @@ def main():
                 stderr = stderr.decode("utf-8", "replace")
                 if proc.returncode != 0:
                     raise RuntimeError(stderr.strip() or "tesseract failed")
+                quality = assess_ocr_quality(stdout)
                 text_path = text_root / slice_path.relative_to(slices_root).with_suffix(".txt")
                 ensure_dir(text_path.parent)
                 with io.open(str(text_path), "w", encoding="utf-8") as handle:
                     handle.write(stdout)
                 rows.append(dict(part, source_hash=source_hash, text=str(text_path), ocr_engine="tesseract",
-                                 ocr_lang=args.lang, status="ok"))
+                                 ocr_lang=args.lang, status="ok", ocr_quality=quality["quality"],
+                                 ocr_quality_score=quality["score"], ocr_quality_reason=quality["reason"]))
             except Exception as exc:
                 failures.append(dict(part, source_hash=source_hash, status="ocr_failed", error=str(exc)))
 

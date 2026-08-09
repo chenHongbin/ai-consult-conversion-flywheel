@@ -1,0 +1,100 @@
+{
+  "hook": {
+    "label": "封面钩子",
+    "renderPreference": "api",
+    "titleMax": 14,
+    "pointsMax": 0,
+    "imageRole": "hero",
+    "supports": ["xhs", "douyin", "wechat", "moments", "ppt"]
+  },
+  "misconception": {
+    "label": "误区澄清",
+    "renderPreference": "api",
+    "titleMax": 16,
+    "pointsMax": 4,
+    "imageRole": "optional",
+    "supports": ["xhs", "douyin", "wechat", "moments", "ppt"]
+  },
+  "mechanism": {
+    "label": "机制解释",
+    "renderPreference": "api",
+    "titleMax": 16,
+    "pointsMax": 5,
+    "imageRole": "diagram",
+    "requiresMedicalSource": true,
+    "supports": ["xhs", "wechat", "ppt"]
+  },
+  "flow": {
+    "label": "流程步骤",
+    "renderPreference": "api",
+    "titleMax": 16,
+    "pointsMax": 5,
+    "imageRole": "none",
+    "supports": ["xhs", "wechat", "moments", "ppt"]
+  },
+  "checklist": {
+    "label": "行动清单",
+    "renderPreference": "api",
+    "titleMax": 16,
+    "pointsMax": 6,
+    "imageRole": "optional",
+    "supports": ["xhs", "wechat", "moments", "ppt"]
+  },
+  "comparison": {
+    "label": "对比判断",
+    "renderPreference": "api",
+    "titleMax": 16,
+    "pointsMax": 6,
+    "imageRole": "none",
+    "supports": ["xhs", "wechat", "ppt"]
+  },
+  "data": {
+    "label": "数据证据",
+    "renderPreference": "api",
+    "titleMax": 16,
+    "pointsMax": 5,
+    "imageRole": "chart",
+    "requiresMedicalSource": true,
+    "supports": ["xhs", "wechat", "ppt"]
+  },
+  "doctor-ip": {
+    "label": "医生IP",
+    "renderPreference": "api",
+    "titleMax": 14,
+    "pointsMax": 2,
+    "imageRole": "portrait",
+    "supports": ["xhs", "douyin", "wechat", "moments"]
+  },
+  "story": {
+    "label": "故事场景",
+    "renderPreference": "api",
+    "titleMax": 14,
+    "pointsMax": 3,
+    "imageRole": "scene",
+    "supports": ["xhs", "douyin", "wechat"]
+  },
+  "event": {
+    "label": "品牌活动",
+    "renderPreference": "api",
+    "titleMax": 18,
+    "pointsMax": 5,
+    "imageRole": "hero",
+    "supports": ["xhs", "douyin", "wechat", "moments"]
+  },
+  "quote": {
+    "label": "观点金句",
+    "renderPreference": "api",
+    "titleMax": 24,
+    "pointsMax": 1,
+    "imageRole": "optional",
+    "supports": ["xhs", "douyin", "wechat", "moments", "ppt"]
+  },
+  "action": {
+    "label": "下一步提醒",
+    "renderPreference": "api",
+    "titleMax": 16,
+    "pointsMax": 4,
+    "imageRole": "optional",
+    "supports": ["xhs", "douyin", "wechat", "moments", "ppt"]
+  }
+}

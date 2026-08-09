@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0-patient-insight-candidate",
+  "source_run_id": "run-20260809-001",
+  "scope": {
+    "institution": "示例机构",
+    "department": "示例科室",
+    "disease_or_project": "示例病种",
+    "channel": "微信",
+    "time_window": "2026-07-01/2026-07-31"
+  },
+  "evidence_summary": {
+    "case_count": 40,
+    "independent_dedup_clusters": 32,
+    "denominator": "本批可比咨询案例",
+    "outcome_source": "机构确认数据/未知"
+  },
+  "delta": {
+    "decision_states_upsert": [
+      {
+        "state_id": "state-fee-value-v1",
+        "name": "费用与价值比较",
+        "scope": {
+          "institution": "示例机构",
+          "department": "示例科室",
+          "disease_or_project": "示例病种",
+          "channel": "微信"
+        },
+        "observable_signals": ["患者询问价格", "患者说先比较一下"],
+        "common_doubt_intents": ["doubt-fee-total", "doubt-fee-value"],
+        "latent_concern_hypothesis": ["担心预算", "担心乱收费或花钱后不值"],
+        "validation_question": "你现在更担心总费用，还是担心花了钱没有解决问题？",
+        "recommended_next_action": "先确认顾虑，再引用已确认的流程和费用事实",
+        "support_case_ids": ["case-redacted-001", "case-redacted-002"],
+        "counterexample_ids": ["case-redacted-017"],
+        "independent_dedup_clusters": 2,
+        "denominator": "本批可比咨询案例",
+        "evidence_refs": ["case-redacted-001#00:02:10"],
+        "clinical_boundary": "non_clinical",
+        "privacy_risk": "low",
+        "review_status": "pending_review"
+      }
+    ],
+    "doubt_intents_upsert": [],
+    "practice_scenarios_upsert": []
+  },
+  "promotion": {
+    "requested": false,
+    "evaluation_passed": false,
+    "coverage_gate_passed": false,
+    "manager_reviewed": false,
+    "privacy_reviewed": false,
+    "clinical_reviewed": false
+  }
+}

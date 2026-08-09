@@ -45,6 +45,7 @@ def main():
     parser.add_argument("--mode", choices=("auto", "full", "incremental"), default="auto")
     parser.add_argument("--run-transcription", action="store_true", help="invoke YouNavi for all pending audio")
     parser.add_argument("--run-ocr", action="store_true", help="slice and OCR all pending images with Tesseract")
+    parser.add_argument("--skip-extract", action="store_true", help="skip HTML/PDF/Office text extraction")
     parser.add_argument("--agent", help="YouNavi agent-cli path")
     parser.add_argument("--timeout", type=int, default=900)
     args = parser.parse_args()
@@ -59,13 +60,15 @@ def main():
     run_dir = root / "咨询转化工作区" / "_系统" / "蒸馏任务" / run_id
     transcript_dir = processing_dir / "转写"
     ocr_dir = processing_dir / "OCR"
+    document_dir = processing_dir / "文档文本"
     ensure_dir(run_dir)
     ensure_dir(transcript_dir)
     ensure_dir(ocr_dir)
+    ensure_dir(document_dir)
 
     # Keep derived paths stable so later incremental runs can skip unchanged
     # transcripts and OCR results.
-    derived_dirs = [transcript_dir, ocr_dir / "text"]
+    derived_dirs = [transcript_dir, ocr_dir / "text", document_dir]
     if inventory(root, index_dir, derived_dirs, args.mode) != 0:
         return 1
 
@@ -84,8 +87,25 @@ def main():
         if code not in (0, 1):
             return code
 
+    if not args.skip_extract:
+        code = run([sys.executable, SCRIPT_DIR / "extract_text_sources.py", root,
+                    "--output-dir", document_dir])
+        if code not in (0, 1):
+            return code
+
     if inventory(root, index_dir, derived_dirs, args.mode) != 0:
         return 1
+
+    # Build one redacted, deduplicated evidence manifest only after all
+    # available transcription, OCR and document extraction has completed.
+    batch_path = root / "咨询转化工作区" / "_系统" / "案例标准化" / ("蒸馏批次-" + run_id + ".jsonl")
+    batch_code = run([sys.executable, SCRIPT_DIR / "prepare_distillation_batch.py",
+                      transcript_dir, ocr_dir / "text", document_dir, "--output", batch_path])
+    if batch_code != 0:
+        return batch_code
+
+    shadow_code = run([sys.executable, SCRIPT_DIR / "run_shadow_analysis.py", root,
+                       "--batch", batch_path, "--count", "3"])
 
     coverage_path = index_dir / "coverage-report.json"
     coverage = read_json(coverage_path)
@@ -94,8 +114,10 @@ def main():
         "run_id": run_id,
         "gate": gate,
         "coverage": coverage,
+        "standardized_batch": str(batch_path),
+        "shadow_run_status": "ready" if shadow_code == 0 else "waiting_for_cases",
         "next_agent_step": (
-            "按咨询转化八步法和全链路蒸馏提示词读取全部样本，按资料性质与结果权重分层汇总，同时输出 candidate.json 和 knowledge-candidate.json；分别运行能力包与机构知识写回脚本；不要只分析单条，也不要因缺少已到/未到标签跳过样本。"
+            "按咨询转化八步法和全链路蒸馏提示词读取全部样本，按资料性质与结果权重分层汇总，同时输出 candidate.json、knowledge-candidate.json 和 patient-insight-candidate.json；分别运行三类候选写回脚本；不要只分析单条，也不要因缺少已到/未到标签跳过样本。"
             if gate == "ready_for_agent_distillation" else
             "继续处理 pending 项；当前只能输出部分样本候选分析。"
         ),

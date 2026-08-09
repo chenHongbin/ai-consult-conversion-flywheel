@@ -1,0 +1,4 @@
+interface:
+  display_name: "医疗内容生图｜API统一版"
+  short_description: "所有医疗图片统一通过老张或HiAPI生成"
+  default_prompt: "使用 $medical-image-studio 把这个医疗主题编译成可审核的视觉内容；所有页面都调用已配置的老张 API 或 HiAPI，多页时先生成一张确认图。"

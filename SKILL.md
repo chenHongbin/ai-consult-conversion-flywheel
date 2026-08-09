@@ -13,13 +13,14 @@ description: AI咨询转化飞轮：面向民营医疗机构咨询师与咨询�
 
 这是给咨询师直接安装使用的一个 Skill，不要求用户理解“知识库、模块、蒸馏器、规则包”或 API。初始化、录音转写、截图/OCR、案例筛选、咨询转化八步法分析、能力蒸馏、AI 陪练和版本管理都藏在本 Skill 后面。
 
-默认服务咨询师的四类日常动作：
+默认服务咨询师的五类日常动作：
 
 - **分析这条咨询**：判断阶段、顾虑、断点和下一步；
 - **帮我回复**：先说明目的，再给安全的回复草稿；
 - **安排回访**：给出回访理由、时间和停止条件；
 - **陪我练一遍**：模拟不同渠道、病种和顾虑的患者。
 - **帮我做一张图**：直接生成案例卡、对比图、朋友圈海报、到院流程图、医院环境图或医生科普配图。
+- **给我一套跟进素材**：根据当前对话生成朋友圈文案、微信下一步文案和对应视觉素材。
 
 当用户说“看团队、批量分析、做复盘、蒸馏销冠、培训新人、生成员工周报或做一对一沟通复盘”时，切换到管理者视图；仍然使用同一个入口和同一套机构能力包。
 
@@ -35,9 +36,9 @@ description: AI咨询转化飞轮：面向民营医疗机构咨询师与咨询�
 
 初始化、蒸馏、回访、陪练、知识升级和团队复盘都是隐藏工作流，由自然语言自动路由，不要求使用者理解内部模块、知识库或蒸馏器。
 
-需要详细数据模型时读取 [knowledge-model.md](references/knowledge-model.md)；需要首次初始化或蒸馏时读取 [distillation-workflow.md](references/distillation-workflow.md)；需要分析、辅导或输出话术时读取 [analysis-and-coaching.md](references/analysis-and-coaching.md)；涉及脱敏、医疗边界或旧案例清洗时读取 [safety-and-sanitization.md](references/safety-and-sanitization.md)。
+需要详细数据模型时读取 [knowledge-model.md](references/knowledge-model.md)；需要患者决策状态、常见疑义和画像驱动陪练时读取 [patient-decision-insights.md](references/patient-decision-insights.md)；需要首次初始化或蒸馏时读取 [distillation-workflow.md](references/distillation-workflow.md)；需要分析、辅导或输出话术时读取 [analysis-and-coaching.md](references/analysis-and-coaching.md)；涉及脱敏、医疗边界或旧案例清洗时读取 [safety-and-sanitization.md](references/safety-and-sanitization.md)。
 
-需要咨询师前台话术、回访和陪练交互时读取 [consultant-front-door.md](references/consultant-front-door.md)；所有录音、电话、微信、私信、截图 OCR 和陪练默认读取 [consultation-eight-step-method.md](references/consultation-eight-step-method.md)；需要人物视角卡时读取 [perspective-lenses.md](references/perspective-lenses.md)；需要新人陪练时读取 [practice-coach.md](references/practice-coach.md)；需要团队管理、员工沟通、过程量、结果数据和周报/月度沟通时读取 [team-management.md](references/team-management.md)；需要按成员、日期、命名规范和夜间 Dream Cycle 工作时读取 [team-file-conventions.md](references/team-file-conventions.md)；需要生成或编辑咨询场景图片时读取 [visual-creative.md](references/visual-creative.md)；需要初始化本地/IMA资料源或持续蒸馏时读取 [workspace-onboarding.md](references/workspace-onboarding.md)、[source-ingestion.md](references/source-ingestion.md)、[dream-cycle.md](references/dream-cycle.md)、[full-scan-and-incremental.md](references/full-scan-and-incremental.md)、[initialization-and-distillation-prompts.md](references/initialization-and-distillation-prompts.md) 和 [champion-full-funnel-distillation.md](references/champion-full-funnel-distillation.md)。本 Skill 不内置任何机构示例知识库、真实录音、聊天截图或外部试跑报告；外部测试夹具只在 Skill 外部按需接入。
+需要咨询师前台话术、回访和陪练交互时读取 [consultant-front-door.md](references/consultant-front-door.md)；所有录音、电话、微信、私信、截图 OCR 和陪练默认读取 [consultation-eight-step-method.md](references/consultation-eight-step-method.md)；需要人物视角卡时读取 [perspective-lenses.md](references/perspective-lenses.md)；需要新人陪练时读取 [practice-coach.md](references/practice-coach.md)；需要团队管理、员工沟通、过程量、结果数据和周报/月度沟通时读取 [team-management.md](references/team-management.md)；需要按成员、日期、命名规范和夜间 Dream Cycle 工作时读取 [team-file-conventions.md](references/team-file-conventions.md)；需要生成或编辑咨询场景图片时读取 [visual-creative.md](references/visual-creative.md) 和 [consultation-visual-content-loop.md](references/consultation-visual-content-loop.md)，实际调用嵌入式 `skills/medical-image-studio/`；需要初始化本地/IMA资料源或持续蒸馏时读取 [workspace-onboarding.md](references/workspace-onboarding.md)、[source-ingestion.md](references/source-ingestion.md)、[dream-cycle.md](references/dream-cycle.md)、[full-scan-and-incremental.md](references/full-scan-and-incremental.md)、[initialization-and-distillation-prompts.md](references/initialization-and-distillation-prompts.md) 和 [champion-full-funnel-distillation.md](references/champion-full-funnel-distillation.md)。本 Skill 不内置任何机构示例知识库、真实录音、聊天截图或外部试跑报告；外部测试夹具只在 Skill 外部按需接入。
 
 处理通用咨询方法时读取 [consultation-base.md](references/consultation-base.md)。它是从历史培训课件和案例中去身份化、去机构化后形成的基础能力底座，不代表任何单一机构的事实。
 
@@ -45,7 +46,7 @@ description: AI咨询转化飞轮：面向民营医疗机构咨询师与咨询�
 
 首批蒸馏回归集位于 [test-set](references/test-set/)，先用它验证阶段判断、异议识别、下一步建议和安全拦截，再接入更多机构真实案例。v0.4 的脚本位于 [scripts](scripts/)，包括低门槛工作区初始化、运行环境检测、长图切片/OCR、YouNavi 批量转写、批量蒸馏清单准备和团队周报统计。
 
-本版的审查结论记录在 [adversarial-review.md](references/adversarial-review.md)，修改规则时先检查其中的四个底层约束。
+本版的审查结论记录在 [adversarial-review.md](references/adversarial-review.md)，修改规则时先检查其中的四个底层约束；患者决策洞察的字段、陪练边界和发布门槛记录在 [patient-decision-insights.md](references/patient-decision-insights.md)；v1.6 的可靠处理、影子试用和统一发布规则记录在 [v1.6-release-notes.md](references/v1.6-release-notes.md)。
 
 岗位使用者审查记录在 [role-based-review.md](references/role-based-review.md)，涉及日常队列、输出长度或首次使用体验时优先参考它。
 
@@ -89,7 +90,7 @@ description: AI咨询转化飞轮：面向民营医疗机构咨询师与咨询�
 
 主路径支持 WorkBuddy、Trae、Codex、Claude 和普通本地工作区。使用 `scripts/detect_environment.py` 做本地能力检测，不因无法识别运行时而阻塞本地模式。未明确指定外部资料时，不读取任何默认知识库；用户明确选择 IMA 后，才列出知识库并让用户指定，不根据历史示例或默认名称猜测。
 
-初始化完成后，不要求用户整理或搬运已有资料。首次出现“蒸馏销冠”“蒸馏这一批”“更新咨询能力”时，使用 `scripts/inventory_workspace.py` 递归扫描当前工作空间根目录；再使用 `scripts/run_full_distillation.py` 串起已有转写匹配、YouNavi 批量转写、长图切片/OCR、文档提取队列和覆盖率报告。对长图先切片再 OCR，对录音默认调用 YouNavi 转写并保留时间点。若用户只说“分析这条”或明确指定某个文件，才执行单案例分析。若用户说“生成本周团队报告”，读取 `08_团队管理` 中本周期的结构化数据和受控员工沟通记录，先输出数据口径与缺口，再生成每名员工一个管理动作的周报。
+初始化完成后，不要求用户整理或搬运已有资料。首次出现“蒸馏销冠”“蒸馏这一批”“更新咨询能力”时，使用 `scripts/inventory_workspace.py` 递归扫描当前工作空间根目录；再使用 `scripts/run_full_distillation.py` 串起已有转写匹配、YouNavi 批量转写、长图切片/OCR、HTML/PDF/Office 文档提取、质量分层、失败记录和覆盖率报告。对长图先切片再 OCR，对录音优先调用 YouNavi 转写并保留原始来源；任何单条处理失败都记录后继续，不因为一条失败阻塞整批。资料处理完成后自动生成一批去重案例的“影子试用队列”，Skill Agent 必须继续读取队列中的代表案例，按咨询转化八步法生成实际复盘报告，不能只把队列路径交给用户；影子试用不改 active 版本，也不要求用户先补齐机构问卷才能开始试用。若用户只说“分析这条”或明确指定某个文件，才执行单案例分析。若用户说“生成本周团队报告”，读取 `08_团队管理` 中本周期的结构化数据和受控员工沟通记录，先输出数据口径与缺口，再生成每名员工一个管理动作的周报。
 
 初始化只建立机构事实；不要把机构事实与团队经验混为一谈。没有证据的医生、价格、流程、疗效和优惠不得补写。每次运行绑定：`机构 + 科室 + 病种/项目 + 渠道 + 能力包版本`。在分析、回复、陪练和团队复盘前，同时读取当前工作空间 `_系统/当前能力包/active.json` 和 `_系统/当前机构知识/active.json`；如果存在 active 版本，再读取对应的运行时文件。团队发布包安装后，如果当前工作区没有本地版本，则读取 Skill 内置的 `institution-pack/runtime-context.md` 和 `institution-pack/knowledge-runtime.md`。没有已确认知识时，不能假装知道机构的医生、项目、价格或服务。
 
@@ -123,16 +124,18 @@ description: AI咨询转化飞轮：面向民营医疗机构咨询师与咨询�
 4. 为所有可用案例生成标准化案例卡，自动去重、模式脱敏和结果来源标记；
 5. 对正向参考、反向参考、普通/对照、结果未知和方法参考分层分析；
 6. 先提炼销冠完整销售逻辑，再挂载流失节点、顾虑、100 问、200 问和陪练专项；
-7. 读取 `_系统/当前能力包/feedback.jsonl` 中尚未吸收的管理者反馈，再用固定测试集回归，要求蒸馏 Agent 同时输出结构化 `candidate.json` 和 `knowledge-candidate.json`，而不是只输出散文报告；
-8. 分别运行 `scripts/commit_capability_candidate.py` 和 `scripts/commit_knowledge_candidate.py`；咨询能力和机构知识各自生成版本、运行时文件和候选归档；
-9. 机构知识只有已确认事实进入运行时，冲突和待确认知识保留在候选区；团队发布包只携带已确认知识；
-10. 后续运行只处理新增或内容变化的资料；候选更新不覆盖正在使用的能力包，失败时继续使用旧版本。
+7. 读取 `_系统/当前能力包/feedback.jsonl` 中尚未吸收的管理者反馈，再用固定测试集回归，要求蒸馏 Agent 同时输出结构化 `candidate.json`、`knowledge-candidate.json` 和 `patient-insight-candidate.json`，而不是只输出散文报告；
+8. 分别运行 `scripts/commit_capability_candidate.py`、`scripts/commit_knowledge_candidate.py` 和 `scripts/commit_patient_insight_candidate.py`；三类能力各自生成版本、运行时文件和候选归档，只有审核通过的内容进入 active；
+9. 运行 `scripts/run_shadow_analysis.py`，用代表性的正向、反向、对照和未知结果案例生成影子复盘，先验证“能不能分析、哪里证据不足、哪些事实待确认”；
+10. 三类组件就绪后运行 `scripts/publish_release.py`，把咨询能力、机构知识和患者洞察绑定为一个可追踪、可回滚的原子发布版本；团队包只能从这个统一发布版本构建；
+11. 机构知识只有已确认事实进入运行时，冲突和待确认知识保留在候选区；团队发布包只携带已确认知识；
+12. 后续运行只处理新增或内容变化的资料；候选更新不覆盖正在使用的能力包，失败时继续使用旧版本。若统一发布版本异常，使用 `scripts/rollback_release.py` 同步回退三类组件，避免能力、知识和患者洞察版本错配。
 
 批量任务中某一条音频、图片或笔记失败时，记录失败并继续其他条目；遇到 IMA 限频或权限错误时立即暂停该资料源，不反复请求。
 
 持续迭代必须基于 `scripts/inventory_workspace.py` 生成的文件哈希和版本差异。每周、每两周或每月都可以运行一次，但不能把同一录音重复计算成多条证据，也不能让单个成功案例自动成为机构规则。
 
-长图和 OCR 的本地执行优先使用 `scripts/ocr_long_images.py`；录音优先使用 `scripts/batch_transcribe_younavi.py`；案例标准化前使用 `scripts/prepare_distillation_batch.py` 生成脱敏、可追溯的批量清单；咨询能力候选写回使用 `scripts/commit_capability_candidate.py`；机构知识候选写回使用 `scripts/commit_knowledge_candidate.py`；日常回答加载两类运行时能力使用 `scripts/load_active_capability.py`；管理者纠正规则使用 `scripts/record_capability_feedback.py`；版本异常时使用 `scripts/rollback_capability.py`。
+长图和 OCR 的本地执行优先使用 `scripts/ocr_long_images.py`；录音优先使用 `scripts/batch_transcribe_younavi.py`；HTML/PDF/Office 文本提取使用 `scripts/extract_text_sources.py`；案例标准化前使用 `scripts/prepare_distillation_batch.py` 生成脱敏、去重、可追溯的批量清单；咨询能力候选写回使用 `scripts/commit_capability_candidate.py`；机构知识候选写回使用 `scripts/commit_knowledge_candidate.py`；患者决策洞察候选写回使用 `scripts/commit_patient_insight_candidate.py`；影子试用使用 `scripts/run_shadow_analysis.py`；统一发布使用 `scripts/publish_release.py`；日常回答加载三类运行时能力使用 `scripts/load_active_capability.py`；管理者纠正规则使用 `scripts/record_capability_feedback.py`；版本异常时使用 `scripts/rollback_release.py`。
 
 ### 默认分析引擎：咨询转化八步法
 
@@ -144,14 +147,17 @@ description: AI咨询转化飞轮：面向民营医疗机构咨询师与咨询�
 
 ### 双轨蒸馏：咨询能力与机构知识同步成长
 
-每轮全量或增量蒸馏都必须同时产出两类候选：
+每轮全量或增量蒸馏都必须同时产出三类候选：
 
 - **咨询能力候选**：销冠判断、阶段动作、顾虑处理、流失节点、训练题和团队规则；
 - **机构知识候选**：机构介绍、科室项目、服务流程、医生、优势、资质、案例和对外表达。
+- **患者洞察候选**：去重后的群体决策状态、常见疑义意图、流失节点和合成陪练场景；不得写入患者个人画像。
 
 从录音或聊天中提取的机构说法只能进入“机构知识候选”，不能自动成为机构事实。价格、医生、地址、活动、资质、疗效、周期和案例结果必须经过管理者确认；冲突、过期和隐私内容不得进入运行时或团队发布包。
 
 每轮报告必须分别显示：新增机构知识、待确认知识、冲突知识、过期知识和被拒绝知识，并保留来源文件、录音时间点或聊天位置。机构知识运行时只读取 `_系统/当前机构知识/active.json` 指向版本中状态为 `approved`、`confirmed` 或 `active` 的条目。
+
+患者洞察必须把“患者原话/行为”与“AI 候选解释”分开。小样本只写“本批观察到”，不能写成“患者通常”；不能推断收入、职业、性格、心理、疾病严重程度、支付能力或成交潜力。只有通过证据、反例、去重簇、隐私审核、固定测试和管理者确认的群体状态，才可以通过 `scripts/commit_patient_insight_candidate.py --publish` 进入运行时。陪练使用脱敏合成场景，不读取真实患者隐性画像。
 
 ### 人物视角卡
 
@@ -177,10 +183,22 @@ description: AI咨询转化飞轮：面向民营医疗机构咨询师与咨询�
 
 ### 团队 Skill 发布与更新
 
-咨询主管每周完成一轮能力包发布后，运行：
+咨询主管每周完成一轮候选审核后，先把三类运行时组件绑定成一个原子版本：
+
+```text
+python3 scripts/publish_release.py <工作空间根目录> --version v1.6
+```
+
+然后运行：
 
 ```text
 python3 scripts/build_team_skill_package.py <工作空间根目录> --output-dir <发布目录> --institution <机构> --department <科室>
+```
+
+没有统一发布版本时，团队包不会生成；这样团队成员拿到的能力、机构知识和患者洞察一定来自同一版。需要回退时运行：
+
+```text
+python3 scripts/rollback_release.py <工作空间根目录> --previous
 ```
 
 生成的 `.skill` 是“基础 Skill + 已审核咨询能力 + 已确认机构知识”的团队版本。团队成员安装或更新这一个包后，日常咨询分析、费用/效果/信任顾虑处理、流失节点诊断、新人陪练、阶段判断和机构事实回答会优先使用机构能力。发布包不得包含原始患者录音、微信聊天、姓名、电话、病历、未审核候选规则、待确认机构知识或主管私有团队资料。
@@ -305,9 +323,9 @@ python3 scripts/build_team_skill_package.py <工作空间根目录> --output-dir
 
 转介必须给出具体出口：涉及用药→转执业人员；涉及隐私→停止索取并说明用途；无法确认→暂不采用。不要只输出“有风险”。
 
-## 视觉弹药：直接生成模式
+## 视觉弹药：咨询分析后的素材包
 
-用户说“做一张图”“做个海报”“生成案例图”“做个对比图”“把这条录音做成培训图”时，直接生成，不在生成前要求用户确认，不把内部风险检查变成前台问题。
+用户说“做一张图”“做个海报”“生成案例图”“做个对比图”“把这条录音做成培训图”时，直接生成，不在生成前要求用户确认，不把内部风险检查变成前台问题。用户要求分析一条真实咨询时，默认在复盘卡后附“朋友圈文案 + 微信下一步文案 + 推荐视觉类型 + 生图提示词”；当图片能降低当前顾虑的理解成本时，直接调用嵌入式 `skills/medical-image-studio/` 生成一张主图。
 
 自动完成以下工作：
 
@@ -316,10 +334,10 @@ python3 scripts/build_team_skill_package.py <工作空间根目录> --output-dir
 3. 优先使用已审核的机构事实、用户提供的原文和真实上传素材；
 4. 缺少事实时不编造，自动采用中性表达、占位信息或“示意图”表达；
 5. 自动脱敏姓名、电话、微信、头像、病历号和地址等个人信息；
-6. 先生成视觉画面，再自动完成中文文案排版和尺寸适配；
+6. 使用 `skills/medical-image-studio/` 的项目契约、视觉路由、文字容量控制和 API 生成；
 7. 输出成品，不等待用户确认；用户后续可以直接要求改风格、改文案、换尺寸或重做。
 
-视觉生成的用户审核权体现在“可随时修改和重做”，而不是要求用户在每次生成前确认。Skill 不自动发送、发布或写入外部系统。
+视觉生成的用户审核权体现在“可随时修改和重做”，而不是要求用户在每次生成前确认。Skill 不自动发送、发布或写入外部系统。图片项目、提示词和 QA 记录写入 `_系统/视觉生成`，成品写入 `07_我的产出/06_咨询视觉素材`。
 
 图片类型默认规则：
 
@@ -327,7 +345,9 @@ python3 scripts/build_team_skill_package.py <工作空间根目录> --output-dir
 - 对比图：优先生成“普通回复/优化回复”“有推进/无推进”“错误动作/正确动作”等咨询行为对比；
 - 朋友圈海报：生成视觉背景、文案和版式，价格、地址、医生、活动只引用已审核机构事实；
 - 医院环境图：有真实照片时做优化和排版，没有真实照片时生成“环境示意图”，不伪装成真实院区；
-- 医疗前后效果图：只有用户提供真实且已授权的素材时才做整理和展示；没有真实证据时不生成虚构疗效，自动转为过程示意或科普图。
+- 医疗前后效果图：只有用户提供真实且已授权的素材时才做整理和展示；没有真实证据时自动转为“AI案例示意/过程示意”，不得把生成图包装成真实疗效证据。
+
+完整路由、输出目录和三条可直接试跑的提示词见 [consultation-visual-content-loop.md](references/consultation-visual-content-loop.md)。
 
 ## 规则与安全边界
 
@@ -353,7 +373,7 @@ python3 scripts/build_team_skill_package.py <工作空间根目录> --output-dir
 
 每次反馈都记录为“保留、修改、拒绝或待验证”。只有满足以下条件，经验才可晋升为机构规则：有原始证据、有适用范围、有反例或限制、通过合规检查、得到管理者确认，并通过固定测试案例。
 
-建议能力包按版本管理：`v0.1 初始化`、`v0.2 首轮蒸馏`、`v0.3 反馈更新`、`v0.4 团队管理与结果验证`、`v0.5 成员纵向档案与夜间自动化`、`v0.6 前台极简`、`v0.7 后台个人档案归档与夜间队列接通`、`v0.8 双入口初始化与咨询销冠蒸馏提示词`、`v0.9 销冠全链路蒸馏与顾虑专项能力`、`v1.0 首次全量接管与增量蒸馏编排`、`v1.1 机构能力包写回、运行时加载与反馈闭环`、`v1.2 团队 Skill 发布与每周同步`、`v1.3 全量样本纳入、结果加权与八步法统一分析`、`v1.4 咨询能力蒸馏 + 机构知识同步蒸馏`。保留旧版本，支持回看和回滚；不要直接覆盖历史规则。
+建议能力包按版本管理：`v0.1 初始化`、`v0.2 首轮蒸馏`、`v0.3 反馈更新`、`v0.4 团队管理与结果验证`、`v0.5 成员纵向档案与夜间自动化`、`v0.6 前台极简`、`v0.7 后台个人档案归档与夜间队列接通`、`v0.8 双入口初始化与咨询销冠蒸馏提示词`、`v0.9 销冠全链路蒸馏与顾虑专项能力`、`v1.0 首次全量接管与增量蒸馏编排`、`v1.1 机构能力包写回、运行时加载与反馈闭环`、`v1.2 团队 Skill 发布与每周同步`、`v1.3 全量样本纳入、结果加权与八步法统一分析`、`v1.4 咨询能力蒸馏 + 机构知识同步蒸馏`、`v1.5 患者决策洞察与画像驱动陪练`、`v1.6 可靠资料处理、影子试用与统一原子发布`、`v1.7 咨询视觉弹药与嵌入式医疗生图引擎`。保留旧版本，支持回看和回滚；不要直接覆盖历史规则。
 
 机构事实还要记录生效日期、失效日期、责任人和复核周期。医生、价格、项目、优惠或流程变化时，暂停引用相关规则，提醒管理者重新确认。
 

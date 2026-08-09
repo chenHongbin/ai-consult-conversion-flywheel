@@ -3,6 +3,7 @@
 """Slice long chat screenshots into overlapping, OCR-friendly images."""
 
 import argparse
+import hashlib
 import io
 import json
 import os
@@ -29,7 +30,12 @@ def slice_one(source, input_root, output_root, max_height, overlap):
     with Image.open(str(source)) as image:
         image = image.convert("RGB")
         width, height = image.size
-        source_dir = output_root / Path(rel).parent / (Path(rel).stem + "_slices")
+        # Keep intermediate paths ASCII-only. Some macOS Tesseract builds
+        # fail to reopen files whose path contains Chinese characters even
+        # though PIL has written them successfully. The manifest preserves
+        # the original source path, so this does not reduce traceability.
+        source_key = hashlib.sha1(str(source).encode("utf-8")).hexdigest()[:16]
+        source_dir = output_root / ("source-" + source_key) / "slices"
         ensure_dir(source_dir)
         rows = []
         if height <= max_height:

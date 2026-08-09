@@ -1,6 +1,6 @@
 # AI咨询转化飞轮使用说明书
 
-版本：v1.4
+版本：v1.7
 
 一句话理解：**先让 AI 认识机构，再让 AI 蒸馏销冠完整的销售逻辑和流程，最后每天用它分析咨询、训练新人和管理团队。**
 
@@ -44,11 +44,11 @@ AI咨询转化飞轮面向民营医疗机构咨询师、咨询主管和咨询负
 
 ### 下载
 
-当前本地生成的 v1.4 安装包：
+当前本地生成的 v1.7 安装包：
 
-`AI咨询转化飞轮_v1.4.skill`
+`AI咨询转化飞轮_v1.7.skill`
 
-发布到 GitHub 后，资产文件名统一为：`ai-consult-conversion-flywheel-v1.4.skill`。
+发布到 GitHub 后，资产文件名统一为：`ai-consult-conversion-flywheel-v1.7.skill`。
 
 在 WorkBuddy、Trae、Codex 或 Claude 等支持 Skill 的产品中安装。
 
@@ -154,6 +154,66 @@ Skill 会在当前目录建立标准入口，原资料不移动、不删除；�
 └── versions/
 ```
 
+### v1.5：患者决策洞察与 AI 陪练
+
+每轮全量或增量蒸馏还会生成第三类候选：患者决策洞察。它不是患者个人画像，而是从去重、脱敏后的咨询案例中提炼出的群体级决策状态、常见疑义意图、流失节点和合成陪练场景。
+
+第一版建议沉淀 5—8 个状态、10—15 个高频疑义和 8—12 个陪练场景。每张状态卡都必须有可观察证据、候选解释、验证问题、支持案例、反例、适用范围和审核状态。不能推断收入、职业、性格、心理、支付能力或成交潜力。
+
+候选写入：
+
+```bash
+python3 scripts/commit_patient_insight_candidate.py <工作空间根目录> <patient-insight-candidate.json>
+```
+
+只有完成证据、反例、固定测试、隐私审核和管理者审核后，才允许加 `--publish`。团队发布包会同步已审核的患者决策状态和合成陪练索引，但不会携带原始录音、微信聊天或患者个人资料。
+
+陪练流程固定为：患者说一句 → 学员回复 → 多轮互动 → 只指出一个关键问题 → 学员重答。前台只显示“做对的、漏掉的、下一句建议”。
+
+### v1.6：可靠资料处理、影子试用与统一发布
+
+v1.6 解决首次蒸馏最容易卡住的三个问题：资料很多但只处理了一条、OCR/转写失败导致整批停住、三类能力版本不同步。
+
+- 音频、长图、微信 HTML、PDF、DOCX、XLSX、PPTX 统一进入处理清单；原图先切片，OCR 结果保留原图回链；
+- 自动记录派生文本质量。低质量 OCR 仍保存，但降低证据权重；单条失败进入失败清单并继续其他资料；
+- 全量处理后自动生成影子试用队列，挑选正向、反向、对照和结果未知案例，直接按咨询转化八步法生成复盘，不先阻塞在机构问卷；
+- 咨询能力、机构知识、患者洞察分别审核写回后，使用一个统一 release 绑定；团队包只从该 release 构建，回滚也同步回滚三类组件。
+
+后台命令：
+
+```bash
+python3 scripts/run_full_distillation.py <工作空间根目录> --run-transcription --run-ocr
+python3 scripts/run_shadow_analysis.py <工作空间根目录> --count 3
+python3 scripts/publish_release.py <工作空间根目录> --version v1.6
+python3 scripts/build_team_skill_package.py <工作空间根目录> --output-dir <发布目录> --institution <机构> --department <科室>
+```
+
+如果需要恢复上一个团队运行版本：
+
+```bash
+python3 scripts/rollback_release.py <工作空间根目录> --previous
+```
+
+### v1.7：咨询视觉弹药与嵌入式医疗生图
+
+每次咨询分析不只给“怎么回”，还可以给出一套可直接执行的素材包：朋友圈短文案、微信下一步文案、推荐视觉类型和配套图片。用户仍然只安装一个 AI咨询转化飞轮 Skill，医疗生图引擎藏在 `skills/medical-image-studio/` 后面。
+
+支持的咨询素材包括：
+
+- 匿名案例示意、过程示意和患者教育图；
+- 到院流程、检查准备、费用/服务说明卡；
+- 医院环境示意、医生接诊示意和医生科普封面；
+- 朋友圈海报、微信跟进卡和团队培训对比卡。
+
+三条可直接试跑的提示词见 [consultation-visual-content-loop.md](references/consultation-visual-content-loop.md)。首次配置只在本地终端执行：
+
+```bash
+node <Skill目录>/skills/medical-image-studio/scripts/medical-image.mjs --doctor
+node <Skill目录>/skills/medical-image-studio/scripts/configure.mjs
+```
+
+当前嵌入引擎的服务商适配器以文生图为主；图生图要等服务商参考图接口适配完成后启用，不能把文字描述当成已经上传了真实图片。
+
 ### 支持的资料源
 
 - 本地工作空间；
@@ -175,7 +235,7 @@ python3 scripts/inventory_workspace.py <工作空间根目录>
 python3 scripts/run_full_distillation.py <工作空间根目录> --run-transcription --run-ocr
 ```
 
-覆盖率未完成时只能生成“部分样本候选分析”，不能命名为完整销冠能力包。
+覆盖率未完成时只能生成“部分样本候选分析”，不能命名为完整销冠能力包。处理完成后会自动生成影子试用队列；影子试用是验证报告能否跑通，不会修改 active 版本。
 
 ### 第二步：转写与 OCR
 
@@ -205,7 +265,7 @@ python3 scripts/commit_knowledge_candidate.py <工作空间根目录> <knowledge
 
 只有 `approved`、`confirmed` 或 `active` 状态的知识会进入运行时。
 
-### 第五步：蒸馏销冠完整销售流程
+### 第六步：蒸馏销冠完整销售流程
 
 使用：
 
@@ -217,7 +277,7 @@ python3 scripts/commit_knowledge_candidate.py <工作空间根目录> <knowledge
 最终输出“销冠完整销售逻辑图”和“阶段动作卡”，不要生成脱离上下文的金句合集。
 ```
 
-### 第六步：提炼专项顾虑
+### 第七步：提炼专项顾虑
 
 优先分析：
 
@@ -235,7 +295,7 @@ python3 scripts/commit_knowledge_candidate.py <工作空间根目录> <knowledge
 不要只统计出现次数，也不要只摘录话术。
 ```
 
-### 第六步：固定测试与影子运行
+### 第八步：固定测试与影子运行
 
 新能力必须用未参与蒸馏的案例测试，检查：
 
@@ -261,7 +321,8 @@ python3 scripts/commit_knowledge_candidate.py <工作空间根目录> <knowledge
 ├── 01_流失节点报告/
 ├── 02_客户顾虑与标准回应/
 ├── 03_销冠蒸馏能力包/
-└── 04_咨询分析与陪练/
+├── 04_咨询分析与陪练/
+└── 05_患者决策洞察与陪练/
 ```
 
 ### 客户常见 100 问
