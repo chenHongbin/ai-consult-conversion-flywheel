@@ -69,6 +69,8 @@ SYSTEM_FOLDERS = [
     "案例标准化",
     "蒸馏候选",
     "当前能力包",
+    "当前机构知识",
+    "机构知识候选",
     "评估集",
     "来源记录",
     "失败记录",
@@ -149,6 +151,25 @@ def main():
         ensure_dir(system / folder)
     ensure_dir(system / "团队档案")
     ensure_dir(system / "当前能力包" / "versions")
+    ensure_dir(system / "当前机构知识" / "versions")
+    write_if_missing(
+        system / "当前机构知识" / "active.json",
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "status": "base_only",
+                "active_version": None,
+                "package_path": None,
+                "runtime_context_path": None,
+                "approved_fact_count": 0,
+                "pending_fact_count": 0,
+                "message": "每轮蒸馏会提取机构知识候选，管理者确认后进入运行时知识",
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+    )
     write_if_missing(
         system / "当前能力包" / "active.json",
         json.dumps(
@@ -171,7 +192,7 @@ def main():
         profile,
         json.dumps(
             {
-                "version": "1.3",
+                "version": "1.4",
                 "workspace": str(root),
                 "runtime": {"preferred": ["workbuddy", "trae", "codex", "claude"]},
                 "sources": {
@@ -197,7 +218,7 @@ def main():
                 },
                 "release": {
                     "active_version": "base_only",
-                    "candidate_version": "v1.3",
+                    "candidate_version": "v1.4",
                     "auto_publish": False,
                 },
             },

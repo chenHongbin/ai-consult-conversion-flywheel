@@ -60,6 +60,16 @@ def safe_name(value):
     return value.strip("_") or "机构"
 
 
+def approved_knowledge(package):
+    package = dict(package or {})
+    package["facts"] = [
+        item for item in package.get("facts", [])
+        if item.get("status") in ("active", "approved", "confirmed")
+    ]
+    package["pending_facts_excluded"] = True
+    return package
+
+
 def copy_base(source_root, staging):
     for path in source_root.rglob("*"):
         relative = path.relative_to(source_root)
@@ -110,6 +120,22 @@ def main():
         print(json.dumps({"status": "rejected", "reason": "capability_contains_possible_personal_identifier"}, ensure_ascii=False))
         return 2
 
+    knowledge_active_path = workspace / "咨询转化工作区" / "_系统" / "当前机构知识" / "active.json"
+    knowledge_active = load_json(knowledge_active_path) if knowledge_active_path.is_file() else {}
+    knowledge_path = expand_path(knowledge_active.get("package_path", "")) if knowledge_active.get("package_path") else None
+    knowledge_runtime_path = expand_path(knowledge_active.get("runtime_context_path", "")) if knowledge_active.get("runtime_context_path") else None
+    knowledge = approved_knowledge(load_json(knowledge_path) if knowledge_path and knowledge_path.is_file() else {})
+    knowledge_runtime_text = ""
+    if knowledge_runtime_path and knowledge_runtime_path.is_file():
+        with io.open(str(knowledge_runtime_path), "r", encoding="utf-8") as handle:
+            knowledge_runtime_text = handle.read()
+    if not knowledge_runtime_text:
+        knowledge_runtime_text = "# 当前机构知识\n\n当前发布包没有已确认的机构知识。\n"
+    knowledge_serialized = json.dumps(knowledge, ensure_ascii=False) + "\n" + knowledge_runtime_text
+    if sensitive(knowledge_serialized):
+        print(json.dumps({"status": "rejected", "reason": "knowledge_contains_possible_personal_identifier"}, ensure_ascii=False))
+        return 2
+
     version = args.version or active.get("active_version")
     institution = args.institution or capability.get("scope", {}).get("institution", "当前机构")
     department = args.department or capability.get("scope", {}).get("department", "当前科室")
@@ -125,10 +151,13 @@ def main():
         save_json(pack_dir / "package.json", capability)
         with io.open(str(pack_dir / "runtime-context.md"), "w", encoding="utf-8") as handle:
             handle.write(runtime_text)
+        save_json(pack_dir / "knowledge.json", knowledge)
+        with io.open(str(pack_dir / "knowledge-runtime.md"), "w", encoding="utf-8") as handle:
+            handle.write(knowledge_runtime_text)
         manifest = {
             "package_type": "team_runtime_skill",
             "base_skill_name": "AI咨询转化飞轮",
-            "base_skill_version": "v1.3",
+            "base_skill_version": "v1.4",
             "capability_version": version,
             "institution": institution,
             "department": department,
@@ -136,6 +165,10 @@ def main():
             "published_at": datetime.datetime.now().isoformat(),
             "capability_hash": sha256(capability_path),
             "runtime_hash": sha256(runtime_path),
+            "knowledge_version": knowledge.get("version"),
+            "knowledge_hash": sha256(pack_dir / "knowledge.json"),
+            "knowledge_runtime_hash": sha256(pack_dir / "knowledge-runtime.md"),
+            "contains_unreviewed_knowledge": False,
             "contains_raw_patient_material": False,
             "contains_manager_workspace": False,
             "update_rule": "install this package to update the team's institution capability",

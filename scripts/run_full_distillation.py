@@ -95,7 +95,7 @@ def main():
         "gate": gate,
         "coverage": coverage,
         "next_agent_step": (
-            "按咨询转化八步法和全链路蒸馏提示词读取全部样本，按资料性质与结果权重分层汇总，输出结构化 candidate.json，随后运行 commit_capability_candidate.py；不要只分析单条，也不要因缺少已到/未到标签跳过样本。"
+            "按咨询转化八步法和全链路蒸馏提示词读取全部样本，按资料性质与结果权重分层汇总，同时输出 candidate.json 和 knowledge-candidate.json；分别运行能力包与机构知识写回脚本；不要只分析单条，也不要因缺少已到/未到标签跳过样本。"
             if gate == "ready_for_agent_distillation" else
             "继续处理 pending 项；当前只能输出部分样本候选分析。"
         ),

@@ -112,7 +112,7 @@ python3 scripts/init_consult_workspace.py 当前工作空间 --use-root
 请先把当前工作空间中的全部候选录音和聊天资料当作“待整理案例”，不要只读取已经转写好的那一条，也不要直接下结论或编造机构事实。
 第一轮扫描整个工作空间，输出数量、格式、时长、重复文件、转写可行性、说话人可识别度、可能的科室/病种/渠道、结果标签缺口和隐私风险盘点；然后自动批量转写和标准化。
 
-请告诉我还需要补充哪些最小信息，并把最终产物定义为“临时咨询能力包 v0.1”，明确它不能用于机构价格、医生、地址、疗效、治疗周期和医疗建议。
+请告诉我还需要补充哪些最小信息，并把最终产物定义为“临时咨询能力包 v0.1”。同时可以提取机构/科室/医生/项目的知识候选，但这些内容全部标记“待机构确认”，不能用于机构价格、医生、地址、疗效、治疗周期和医疗建议。
 ```
 
 ## 咨询销冠蒸馏的标准步骤
@@ -174,9 +174,12 @@ python3 scripts/init_consult_workspace.py 当前工作空间 --use-root
 ### 第 7 步：机构事实补齐与知识绑定
 
 ```text
-请把本轮蒸馏得到的内容分成两类：
+请把本轮蒸馏得到的内容分成两类，并分别输出：
 A. 可迁移的咨询行为规律；
 B. 必须由机构确认的事实。
+
+B 类请整理为 `_系统/机构知识候选/本轮/knowledge-candidate.json`，至少覆盖：机构介绍、科室项目与服务、医生与团队、科室优势与资质、脱敏案例和咨询表达资产。每条知识必须带 `id`、`domain`、`name`、`claim`、`evidence_refs`、`source_type`、`review_status` 和生效/失效时间（未知则写待确认）。
+请区分：已审核机构资料、管理者确认、多人重复提及、单条录音说法和患者转述。单条录音说法只能成为候选，不能自动进入运行时知识。
 
 对 B 类列出最小补充清单：机构名称、科室、病种/项目、医生、服务边界、地址、价格、预约流程、渠道规则和合规禁语。
 没有资料的地方统一写“待机构确认”，不要根据录音猜测或补写。
@@ -203,9 +206,11 @@ B. 必须由机构确认的事实。
 如果覆盖率、证据、反例、隐私、医疗边界和固定测试全部通过，Agent 将候选写入当前工作空间，而不是修改公共 Skill：
 
 ```text
-请把本轮蒸馏结果整理为 `_系统/蒸馏候选/本轮/candidate.json`，必须使用 capability-package-loop.md 中的结构化格式。
-然后运行 `scripts/commit_capability_candidate.py <工作空间根目录> <candidate.json> --publish`。
-发布后读取 `scripts/load_active_capability.py <工作空间根目录> --format markdown`，确认日常运行已经加载新版本。
+请把本轮咨询能力蒸馏结果整理为 `_系统/蒸馏候选/本轮/candidate.json`，把机构知识结果整理为 `_系统/机构知识候选/本轮/knowledge-candidate.json`。
+然后分别运行：
+`scripts/commit_capability_candidate.py <工作空间根目录> <candidate.json> --publish`
+`scripts/commit_knowledge_candidate.py <工作空间根目录> <knowledge-candidate.json> --publish`
+机构知识候选即使写入版本，也只有管理者确认的条目会进入运行时；发布后读取 `scripts/load_active_capability.py <工作空间根目录> --format markdown`，确认咨询能力和机构知识都已加载。
 ```
 
 ### 第 10 步：持续迭代

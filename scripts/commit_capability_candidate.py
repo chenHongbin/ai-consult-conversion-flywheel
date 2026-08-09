@@ -117,6 +117,11 @@ def apply_delta(base, candidate):
         result.setdefault(field, [])
     delta = candidate.get("delta") or {}
     for field, delta_key in DELTA_KEYS.items():
+        if field == "facts":
+            # v1.4 keeps institution facts in the separate knowledge package.
+            # Keep the legacy field for backwards-compatible reads, but never
+            # merge new facts into the consultation capability runtime.
+            continue
         result[field] = merge_items(result.get(field), delta.get(delta_key, []))
     for rule_id in delta.get("deprecate_rule_ids", []):
         for item in result.get("rules", []):
@@ -147,6 +152,8 @@ def validate_candidate(candidate):
     if contains_sensitive(candidate):
         errors.append("candidate contains possible phone, ID, email or WeChat identifier")
     delta = candidate.get("delta") or {}
+    if delta.get("facts_upsert"):
+        errors.append("facts_upsert belongs in knowledge-candidate.json; use commit_knowledge_candidate.py")
     for field, key in DELTA_KEYS.items():
         value = delta.get(key, [])
         if not isinstance(value, list):
@@ -174,11 +181,9 @@ def render_runtime(package, version):
             scope.get("institution", "待确认"), scope.get("department", "待确认"),
             scope.get("disease_or_project", "待确认"), scope.get("channel", "通用")),
         "",
-        "## 机构事实",
+        "## 机构事实来源",
+        "机构介绍、科室项目、医生、服务和其他机构事实由当前机构知识包提供；本能力包只保存咨询行为和训练规则。",
     ]
-    for item in package.get("facts", []):
-        if item.get("status", "confirmed") != "deprecated":
-            lines.append("- {0}：{1}".format(item.get("name", item.get("id", "事实")), item.get("claim", item.get("value", "待确认"))))
     lines.extend(["", "## 销冠完整销售逻辑"])
     for item in package.get("sales_logic", []):
         if item.get("status", "active") == "deprecated":

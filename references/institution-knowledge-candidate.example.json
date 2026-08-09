@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0-knowledge-candidate",
+  "source_run_id": "run-example-2026-08-09",
+  "scope": {
+    "institution": "示例机构",
+    "department": "示例科室",
+    "disease_or_project": "示例项目",
+    "channel": "电话/微信"
+  },
+  "delta": {
+    "facts_upsert": [
+      {
+        "id": "department:example:service-intro",
+        "domain": "科室项目与服务",
+        "name": "服务介绍",
+        "claim": "示例服务内容，需由机构管理者确认后使用",
+        "source_type": "approved_institution_document",
+        "evidence_refs": ["source-example-001#p1"],
+        "review_status": "pending_review",
+        "valid_from": "2026-01-01"
+      }
+    ],
+    "deprecate_fact_ids": []
+  },
+  "change_summary": ["示例机构知识候选"]
+}
