@@ -50,6 +50,7 @@ FRONTLINE_SCRIPTS = {
     "ima_sync.py",
     "personal_growth.py",
     "route_consultation.py",
+    "verify_consult_workspace.py",
 }
 
 FRONTLINE_REFERENCES = {
@@ -69,6 +70,7 @@ FRONTLINE_REFERENCES = {
     "source-ingestion.md",
     "specialist-routing.json",
     "visual-creative.md",
+    "workspace-initialization-contract.md",
     "workspace-onboarding.md",
     "frontline-runtime.md",
 }

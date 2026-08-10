@@ -92,6 +92,9 @@ SYSTEM_FOLDERS = [
     "个人成长",
 ]
 
+WORKSPACE_MANIFEST_NAME = "工作区清单.json"
+STANDARD_WORKSPACE_NAME = "咨询转化工作区"
+
 
 def safe_name(value):
     value = str(value or "").strip()
@@ -115,12 +118,19 @@ def write_if_missing(path, content):
             handle.write(content)
 
 
+def write_json(path, value):
+    ensure_dir(path.parent)
+    with io.open(str(path), "w", encoding="utf-8") as handle:
+        json.dump(value, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Create a simple consultation conversion workspace in a selected local folder."
     )
     parser.add_argument("workspace_root", help="the local workspace selected by the user")
-    parser.add_argument("--name", default="咨询转化工作区", help="folder name to create")
+    parser.add_argument("--name", default=STANDARD_WORKSPACE_NAME, help="固定为标准工作区名称，不支持自定义")
     parser.add_argument(
         "--use-root",
         action="store_true",
@@ -140,8 +150,23 @@ def main():
     )
     args = parser.parse_args()
 
+    if args.name != STANDARD_WORKSPACE_NAME:
+        print(
+            json.dumps(
+                {
+                    "status": "rejected",
+                    "reason": "non_canonical_workspace_name",
+                    "expected": STANDARD_WORKSPACE_NAME,
+                    "received": args.name,
+                    "message": "初始化必须使用标准目录名，不得创建替代名称。",
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 2
+
     selected = expand_path(args.workspace_root)
-    root = selected if args.use_root else selected / args.name
+    root = selected if args.use_root else selected / STANDARD_WORKSPACE_NAME
     ensure_dir(root)
 
     for folder, _ in VISIBLE_FOLDERS:
@@ -177,6 +202,19 @@ def main():
     ensure_dir(system / "当前机构知识" / "versions")
     ensure_dir(system / "患者洞察" / "versions")
     ensure_dir(system / "发布" / "versions")
+    write_json(
+        system / WORKSPACE_MANIFEST_NAME,
+        {
+            "product": "AI咨询转化飞轮",
+            "layout_version": "v1.9",
+            "workspace_root": str(root),
+            "container_name": STANDARD_WORKSPACE_NAME if not args.use_root else "用户指定的工作区本身",
+            "created_by": "scripts/init_consult_workspace.py",
+            "visible_folders": [folder for folder, _ in VISIBLE_FOLDERS],
+            "system_folders": SYSTEM_FOLDERS,
+            "team_mode": "single_manager_team",
+        },
+    )
     write_if_missing(
         system / "发布" / "active.json",
         json.dumps(
@@ -416,6 +454,9 @@ def main():
                 "manager_name": manager_name,
                 "members": parse_members(args.members),
                 "system_folder": str(system),
+                "manifest": str(system / WORKSPACE_MANIFEST_NAME),
+                "layout_version": "v1.9",
+                "canonical_layout": True,
                 "profile": str(profile),
             },
             ensure_ascii=False,
@@ -424,4 +465,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

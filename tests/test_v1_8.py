@@ -80,11 +80,13 @@ class V18Tests(unittest.TestCase):
 
         self.assertTrue(builder.should_copy_frontline(Path("scripts/ima_sync.py")))
         self.assertTrue(builder.should_copy_frontline(Path("scripts/route_consultation.py")))
+        self.assertTrue(builder.should_copy_frontline(Path("scripts/verify_consult_workspace.py")))
         self.assertTrue(builder.should_copy_frontline(Path("scripts/batch_transcribe_younavi.py")))
         self.assertFalse(builder.should_copy_frontline(Path("scripts/run_full_distillation.py")))
         self.assertFalse(builder.should_copy_frontline(Path("scripts/publish_release.py")))
         self.assertTrue(builder.should_copy_frontline(Path("references/frontline-runtime.md")))
         self.assertTrue(builder.should_copy_frontline(Path("references/specialist-routing.json")))
+        self.assertTrue(builder.should_copy_frontline(Path("references/workspace-initialization-contract.md")))
         self.assertTrue(builder.should_copy_frontline(Path("runtime/base-runtime.json")))
 
 
