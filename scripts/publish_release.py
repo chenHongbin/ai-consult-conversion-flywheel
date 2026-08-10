@@ -15,7 +15,7 @@ from release_utils import atomic_save_json, component_snapshot, load_release_act
 def main():
     parser = argparse.ArgumentParser(description="Publish one atomic AI咨询转化飞轮 runtime release.")
     parser.add_argument("workspace_root")
-    parser.add_argument("--version", help="human-readable release version, e.g. v1.6")
+    parser.add_argument("--version", help="human-readable release version, e.g. v1.8")
     args = parser.parse_args()
     workspace = expand_path(args.workspace_root)
     try:

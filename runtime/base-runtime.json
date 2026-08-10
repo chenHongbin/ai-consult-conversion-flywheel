@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0-base-runtime",
+  "runtime_name": "AI咨询转化飞轮基础咨询运行时",
+  "runtime_version": "v1.9",
+  "always_available": true,
+  "requires_distillation": false,
+  "scope": "generic_consultation_conversion",
+  "method": "consultation_eight_step",
+  "layers": [
+    {
+      "id": "base_method",
+      "label": "基础咨询转化方法",
+      "status": "always_on",
+      "references": [
+        "references/consultation-base.md",
+        "references/consultation-eight-step-method.md",
+        "references/analysis-and-coaching.md"
+      ]
+    },
+    {
+      "id": "safety",
+      "label": "医疗边界与隐私安全",
+      "status": "always_on",
+      "references": ["references/safety-and-sanitization.md"]
+    },
+    {
+      "id": "practice",
+      "label": "单动作陪练",
+      "status": "always_on",
+      "references": ["references/practice-coach.md"]
+    },
+    {
+      "id": "visual_content",
+      "label": "咨询视觉与跟进素材",
+      "status": "always_on",
+      "references": [
+        "references/visual-creative.md",
+        "references/consultation-visual-content-loop.md"
+      ]
+    }
+  ],
+  "institution_facts_available": false,
+  "team_rules_available": false,
+  "default_output": [
+    "当前阶段",
+    "患者真实顾虑",
+    "流失或推进节点",
+    "下一步动作",
+    "可直接使用的安全表达",
+    "不能说的话"
+  ],
+  "missing_context_rule": "没有已确认机构知识时，不得编造医生、价格、地址、项目、疗效、周期或活动；明确标记机构事实待确认。",
+  "upgrade_path": "完成机构初始化和蒸馏后，在基础运行时之上叠加团队运行时；一线再叠加个人成长层。"
+}

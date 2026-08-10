@@ -1,0 +1,128 @@
+{
+  "schema_version": "1.0-specialist-routing",
+  "router_name": "AI咨询转化飞轮专项能力路由",
+  "default_route": "conversation_diagnosis",
+  "routes": [
+    {
+      "id": "conversation_diagnosis",
+      "label": "患者沟通诊断",
+      "type": "frontline",
+      "aliases": ["沟通诊断", "对话分析", "录音分析", "微信分析", "流失诊断"],
+      "keywords": ["分析", "录音", "微信", "私信", "聊天", "对话", "流失", "断点", "阶段", "患者"],
+      "references": ["references/analysis-and-coaching.md", "references/consultation-eight-step-method.md", "references/consultation-base.md"],
+      "required_inputs": ["咨询文本、转写文本或可读取的录音/截图"],
+      "output_contract": ["阶段判断", "真实顾虑", "流失节点", "下一步动作", "回复草稿"],
+      "base_available": true
+    },
+    {
+      "id": "objection_fee",
+      "label": "费用异议",
+      "type": "frontline",
+      "aliases": ["费用异议", "价格异议", "贵不贵", "收费顾虑"],
+      "keywords": ["贵", "费用", "价格", "收费", "预算", "值不值", "乱收费", "花多少钱", "报个价"],
+      "references": ["references/consultation-base.md", "references/consultation-eight-step-method.md", "references/analysis-and-coaching.md"],
+      "required_inputs": ["患者关于费用的原话或上下文"],
+      "output_contract": ["费用顾虑类型", "验证问题", "共情承接", "安全回应", "下一步低门槛动作"],
+      "base_available": true
+    },
+    {
+      "id": "objection_effect",
+      "label": "效果担忧",
+      "type": "frontline",
+      "aliases": ["效果担忧", "疗效顾虑", "治不好", "复发担忧"],
+      "keywords": ["效果", "疗效", "治不好", "没效果", "复发", "反复", "失败", "能不能治", "保证"],
+      "references": ["references/consultation-base.md", "references/consultation-eight-step-method.md", "references/safety-and-sanitization.md"],
+      "required_inputs": ["患者对效果或既往治疗的原话"],
+      "output_contract": ["失败经历承接", "效果顾虑验证", "不越界回应", "下一步确认动作"],
+      "base_available": true
+    },
+    {
+      "id": "objection_trust",
+      "label": "信任建立",
+      "type": "frontline",
+      "aliases": ["信任建立", "医院不信任", "医生不信任", "案例信任"],
+      "keywords": ["信任", "医院", "医生", "案例", "正规", "靠谱吗", "真的假的", "乱治", "被骗"],
+      "references": ["references/consultant-front-door.md", "references/consultation-eight-step-method.md", "references/safety-and-sanitization.md"],
+      "required_inputs": ["患者对机构、医生或案例的疑问"],
+      "output_contract": ["信任缺口", "证据边界", "可信表达", "不可使用的虚假证明", "下一步动作"],
+      "base_available": true
+    },
+    {
+      "id": "arrival_progress",
+      "label": "到院前推进",
+      "type": "frontline",
+      "aliases": ["到院前推进", "距离和时间", "家人意见", "预约推进"],
+      "keywords": ["到院", "预约", "邀约", "距离", "太远", "时间", "交通", "家人", "老公", "老婆", "父母", "孩子"],
+      "references": ["references/consultation-eight-step-method.md", "references/analysis-and-coaching.md", "references/consultation-base.md"],
+      "required_inputs": ["当前预约状态和阻力原话"],
+      "output_contract": ["到院阶段", "阻力类型", "推进动作", "确认时间", "防爽约提醒"],
+      "base_available": true
+    },
+    {
+      "id": "no_show_followup",
+      "label": "爽约与分阶段回访",
+      "type": "frontline",
+      "aliases": ["爽约", "未到院", "回访", "跟进"],
+      "keywords": ["爽约", "未到院", "没来", "没到", "失联", "回访", "跟进", "不回复", "已读不回", "再次联系"],
+      "references": ["references/analysis-and-coaching.md", "references/consultation-eight-step-method.md", "references/consultant-front-door.md"],
+      "required_inputs": ["最近一次沟通和历史跟进记录"],
+      "output_contract": ["失约/失联原因假设", "验证方式", "本次回访目的", "回访话术", "停止条件"],
+      "base_available": true
+    },
+    {
+      "id": "practice_coach",
+      "label": "新人单动作陪练",
+      "type": "frontline",
+      "aliases": ["新人陪练", "AI陪练", "咨询练习", "模拟患者"],
+      "keywords": ["陪练", "练习", "模拟", "角色扮演", "新人", "训练", "练一遍", "重答"],
+      "references": ["references/practice-coach.md", "references/patient-decision-insights.md", "references/consultation-eight-step-method.md"],
+      "required_inputs": ["训练动作或患者顾虑；缺失时默认训练一个动作"],
+      "output_contract": ["患者角色", "单一训练目标", "多轮互动", "一个关键反馈", "重答任务"],
+      "base_available": true
+    },
+    {
+      "id": "visual_content",
+      "label": "咨询视觉与跟进素材",
+      "type": "frontline",
+      "aliases": ["生图", "案例图", "朋友圈配图", "医院环境图", "跟进素材"],
+      "keywords": ["生图", "图片", "配图", "海报", "案例图", "对比图", "环境图", "朋友圈素材", "视觉"],
+      "references": ["references/visual-creative.md", "references/consultation-visual-content-loop.md"],
+      "required_inputs": ["素材用途、渠道和视觉类型"],
+      "output_contract": ["文案目的", "图片提示词", "生成参数", "配套微信文案", "安全边界"],
+      "base_available": true
+    },
+    {
+      "id": "champion_distillation",
+      "label": "销冠完整链路蒸馏",
+      "type": "manager",
+      "aliases": ["蒸馏销冠", "销冠蒸馏", "全量蒸馏", "蒸馏能力", "提炼销冠"],
+      "keywords": ["蒸馏", "销冠", "优秀录音", "批量蒸馏", "全量资料", "提炼方法", "能力包"],
+      "references": ["references/distillation-workflow.md", "references/champion-full-funnel-distillation.md", "references/full-scan-and-incremental.md"],
+      "required_inputs": ["本地工作区或明确授权的 IMA 资料源"],
+      "output_contract": ["资料覆盖率", "全链路候选", "反例对照", "候选能力包", "影子试用建议"],
+      "base_available": false
+    },
+    {
+      "id": "skill_iteration",
+      "label": "Skill 版本迭代",
+      "type": "manager",
+      "aliases": ["更新 Skill", "发布能力包", "版本迭代", "更新咨询能力"],
+      "keywords": ["更新skill", "更新能力", "发布", "候选规则", "版本", "迭代", "回滚", "团队包"],
+      "references": ["references/capability-package-loop.md", "references/institution-knowledge-loop.md", "references/v1.8-release-notes.md"],
+      "required_inputs": ["候选能力、审核结果或已完成的统一发布组件"],
+      "output_contract": ["版本差异", "测试结果", "发布或阻塞原因", "团队包动作"],
+      "base_available": false
+    },
+    {
+      "id": "team_management",
+      "label": "团队管理与复盘",
+      "type": "manager",
+      "aliases": ["团队管理", "员工周报", "团队复盘", "早会分析"],
+      "keywords": ["团队", "员工", "主管", "周报", "月报", "早会", "晨会", "过程量", "结果数据", "一对一"],
+      "references": ["references/team-management.md", "references/team-file-conventions.md", "references/role-based-review.md"],
+      "required_inputs": ["团队资料、会议记录或过程/结果数据"],
+      "output_contract": ["团队状态", "每人一个关键问题", "辅导动作", "数据缺口", "下周期跟进"],
+      "base_available": false
+    }
+  ]
+}

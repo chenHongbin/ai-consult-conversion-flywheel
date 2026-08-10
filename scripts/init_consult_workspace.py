@@ -88,6 +88,8 @@ SYSTEM_FOLDERS = [
     "自动化",
     "发布",
     "视觉生成",
+    "IMA同步",
+    "个人成长",
 ]
 
 
@@ -129,6 +131,12 @@ def main():
         "--members",
         default="",
         help="comma-separated members, for example A001_张三,A002_李四",
+    )
+    parser.add_argument(
+        "--role",
+        choices=("manager", "frontline", "consultant"),
+        default="manager",
+        help="runtime role; manager workspaces can distill/publish, frontline workspaces cannot",
     )
     args = parser.parse_args()
 
@@ -240,12 +248,19 @@ def main():
         profile,
         json.dumps(
             {
-                "version": "1.7",
+                "version": "1.9",
                 "workspace": str(root),
                 "runtime": {"preferred": ["workbuddy", "trae", "codex", "claude"]},
                 "sources": {
                     "local": {"enabled": True, "root": str(root)},
-                    "ima": {"enabled": False, "knowledge_bases": [], "native_context": "unknown"},
+                    "ima": {
+                        "enabled": False,
+                        "knowledge_bases": [],
+                        "native_context": "unknown",
+                        "retrieval_mode": "controlled_cache",
+                        "quota_policy": "pause_and_resume",
+                        "priority_mix": {"positive": 0.50, "negative": 0.30, "other": 0.20},
+                    },
                 },
                 "transcription": {"engine": "younavi", "enabled": True},
                 "team": {
@@ -266,7 +281,7 @@ def main():
                 },
                 "release": {
                     "active_version": "base_only",
-                    "candidate_version": "v1.7",
+                    "candidate_version": "v1.9",
                     "auto_publish": False,
                 },
                 "patient_insights": {
@@ -275,6 +290,26 @@ def main():
                     "active_version": "base_only",
                     "publish_requires": ["evidence", "counterexamples", "privacy_review", "manager_review", "fixed_test"],
                 },
+                "personal_growth": {
+                    "enabled": True,
+                    "root": "_系统/个人成长",
+                    "team_rules_override_personal": True,
+                    "personal_experience_auto_promotes_to_team": False,
+                },
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+    )
+
+    write_if_missing(
+        system / "运行时角色.json",
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "role": args.role,
+                "message": "manager 可执行团队蒸馏与发布；frontline/consultant 只执行个人分析、陪练和成长。",
             },
             ensure_ascii=False,
             indent=2,

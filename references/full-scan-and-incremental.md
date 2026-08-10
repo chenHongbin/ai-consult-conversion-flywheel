@@ -56,7 +56,7 @@ IMA 路径使用当前用户明确授权且可访问的知识库作为资料源�
 python3 scripts/inventory_workspace.py <工作空间根目录>
 python3 scripts/run_full_distillation.py <工作空间根目录> --run-transcription --run-ocr
 python3 scripts/run_shadow_analysis.py <工作空间根目录> --count 3
-python3 scripts/publish_release.py <工作空间根目录> --version v1.6
+python3 scripts/publish_release.py <工作空间根目录> --version v1.8
 ```
 
 第一条命令负责资料处理、去重批次和闸门，不代替 Agent 做最终语言模型蒸馏。影子命令会在不修改 active 版本的前提下生成代表案例队列；Agent 读取 `_系统/影子试用/*/analysis-queue.jsonl`，按 [champion-full-funnel-distillation.md](champion-full-funnel-distillation.md) 和咨询转化八步法生成复盘。三类候选经过审核并写回后，最后才运行统一发布命令；不要把“影子试用成功”误认为“已经发布”。

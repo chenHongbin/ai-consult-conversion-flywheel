@@ -1,8 +1,30 @@
 # AI咨询转化飞轮使用说明书
 
-版本：v1.7
+版本：v1.9
 
-一句话理解：**先让 AI 认识机构，再让 AI 蒸馏销冠完整的销售逻辑和流程，最后每天用它分析咨询、训练新人和管理团队。**
+一句话理解：**安装后先用基础咨询运行时解决当天的问题；再让 AI 认识机构、蒸馏销冠完整的销售逻辑和流程，最后每天用它分析咨询、训练新人和管理团队。**
+
+## 3.5 安装后无需蒸馏即可使用
+
+安装包自带基础咨询运行时，不需要先上传知识库或录音。直接说：
+
+```text
+分析这段微信，找出患者为什么没有继续回复。
+患者说费用太贵，帮我判断真实顾虑并写下一句。
+陪我练一次“担心过去治疗失败”的患者。
+帮我设计一次爽约后的回访。
+```
+
+总入口会自动选择专项能力。没有机构蒸馏时，输出的是通用咨询方法，不会编造本机构的价格、医生、地址、项目、疗效或治疗周期。需要机构专属回答时，再执行初始化和蒸馏。
+
+后台可以检查路由：
+
+```bash
+python3 scripts/route_consultation.py "患者说费用太贵，担心乱收费"
+python3 scripts/route_consultation.py --list
+```
+
+路由结果会显示专项能力、当前运行模式、匹配依据、需要的输入和输出结构；用户正常使用时不需要看到这些技术字段。
 
 ## 1. 它解决什么问题
 
@@ -44,11 +66,11 @@ AI咨询转化飞轮面向民营医疗机构咨询师、咨询主管和咨询负
 
 ### 下载
 
-当前本地生成的 v1.7 安装包：
+当前本地生成的 v1.8 安装包：
 
-`AI咨询转化飞轮_v1.7.skill`
+`AI咨询转化飞轮_v1.8.skill`
 
-发布到 GitHub 后，资产文件名统一为：`ai-consult-conversion-flywheel-v1.7.skill`。
+发布到 GitHub 后，资产文件名统一为：`ai-consult-conversion-flywheel-v1.8.skill`。
 
 在 WorkBuddy、Trae、Codex 或 Claude 等支持 Skill 的产品中安装。
 
@@ -184,7 +206,7 @@ v1.6 解决首次蒸馏最容易卡住的三个问题：资料很多但只处理
 ```bash
 python3 scripts/run_full_distillation.py <工作空间根目录> --run-transcription --run-ocr
 python3 scripts/run_shadow_analysis.py <工作空间根目录> --count 3
-python3 scripts/publish_release.py <工作空间根目录> --version v1.6
+python3 scripts/publish_release.py <工作空间根目录> --version v1.8
 python3 scripts/build_team_skill_package.py <工作空间根目录> --output-dir <发布目录> --institution <机构> --department <科室>
 ```
 
@@ -213,6 +235,35 @@ node <Skill目录>/skills/medical-image-studio/scripts/configure.mjs
 ```
 
 当前嵌入引擎的服务商适配器以文生图为主；图生图要等服务商参考图接口适配完成后启用，不能把文字描述当成已经上传了真实图片。
+
+### v1.8：IMA 配额感知与团队/个人双层成长
+
+v1.8 增加两个后台闭环：
+
+- `scripts/ima_sync.py`：维护 IMA 资料清单、优先级、检索队列、配额事件和受控缓存索引。首次批量蒸馏默认按“正向 50%、反向 30%、其他 20%”排序；遇到 IMA 限额立即暂停并断点续传。
+- `scripts/personal_growth.py`：维护一线咨询师自己的案例、个人能力候选、训练反馈和团队版本绑定。团队版本更新时，个人数据保留；依赖旧团队规则的个人候选会标记为待重新验证。
+
+IMA 清单和队列示例：
+
+```bash
+python3 scripts/ima_sync.py inventory <工作空间根目录> \
+  --input <IMA列表响应.json> --knowledge-base <知识库名称>
+python3 scripts/ima_sync.py queue <工作空间根目录> --limit 20
+python3 scripts/ima_sync.py record <工作空间根目录> --media-id <媒体ID> \
+  --quota-error --error "资料获取次数已达上限，请明天再尝试"
+```
+
+个人成长示例：
+
+```bash
+python3 scripts/personal_growth.py init <工作空间根目录> --operator A001_张三 --team-release Team-v1.8
+python3 scripts/personal_growth.py case <工作空间根目录> --source-id case-001 \
+  --role positive --summary "费用顾虑先共情后追问" --outcome "预约"
+python3 scripts/personal_growth.py rebase <工作空间根目录> --team-release Team-v1.9
+python3 scripts/personal_growth.py compose <工作空间根目录>
+```
+
+团队成员仍然只安装一个 `.skill`。团队包包含一线所需的转录、OCR、扫描、分析、陪练和个人成长能力，但不包含主管的全团队蒸馏、候选写回、发布、回滚和团队报告脚本。
 
 ### 支持的资料源
 

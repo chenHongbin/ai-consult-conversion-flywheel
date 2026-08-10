@@ -31,6 +31,50 @@ WECHAT = re.compile(r"(微信号|微信|wxid)\s*[:：]?\s*[A-Za-z][A-Za-z0-9_-]{
 SKIP_DIRS = {".git", "output", "__pycache__", ".venv", "node_modules", "咨询转化工作区"}
 SKIP_SUFFIXES = {".mp3", ".m4a", ".wav", ".aac", ".flac", ".ogg", ".amr", ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff", ".html", ".htm", ".xlsx", ".xls", ".csv", ".jsonl"}
 
+# Team members need deterministic material processing and runtime loading, but
+# must not receive the manager's distillation, publish, rollback, or team
+# reporting toolchain. Keep this allowlist explicit so a new manager script is
+# not silently shipped to frontline users.
+FRONTLINE_SCRIPTS = {
+    "compat.py",
+    "detect_environment.py",
+    "init_consult_workspace.py",
+    "inventory_workspace.py",
+    "batch_transcribe_younavi.py",
+    "slice_long_images.py",
+    "ocr_long_images.py",
+    "extract_text_sources.py",
+    "prepare_distillation_batch.py",
+    "load_active_capability.py",
+    "release_utils.py",
+    "ima_sync.py",
+    "personal_growth.py",
+    "route_consultation.py",
+}
+
+FRONTLINE_REFERENCES = {
+    "analysis-and-coaching.md",
+    "base-runtime.md",
+    "consultant-front-door.md",
+    "consultation-base.md",
+    "consultation-eight-step-method.md",
+    "consultation-visual-content-loop.md",
+    "knowledge-model.md",
+    "lai-methodology.md",
+    "naming.md",
+    "patient-decision-insights.md",
+    "perspective-lenses.md",
+    "practice-coach.md",
+    "safety-and-sanitization.md",
+    "source-ingestion.md",
+    "specialist-routing.json",
+    "visual-creative.md",
+    "workspace-onboarding.md",
+    "frontline-runtime.md",
+}
+
+FRONTLINE_RUNTIME_FILES = {"base-runtime.json"}
+
 
 def load_json(path):
     with io.open(str(path), "r", encoding="utf-8") as handle:
@@ -90,6 +134,8 @@ def copy_base(source_root, staging):
             continue
         if path.is_dir() or path.is_symlink():
             continue
+        if not should_copy_frontline(relative):
+            continue
         if path.suffix.lower() in SKIP_SUFFIXES and relative.parts[:2] != ("references", "test-set"):
             continue
         if path.name.endswith(".skill"):
@@ -97,6 +143,40 @@ def copy_base(source_root, staging):
         target = staging / relative
         ensure_dir(target.parent)
         shutil.copy2(str(path), str(target))
+
+
+def should_copy_frontline(relative):
+    """Return whether a base file belongs in the frontline runtime package."""
+    parts = relative.parts
+    if not parts:
+        return False
+    if parts[0] in ("agents", "skills"):
+        return True
+    if relative.as_posix() in ("SKILL.md", "LICENSE"):
+        return True
+    if parts[0] == "scripts":
+        return len(parts) == 2 and parts[1] in FRONTLINE_SCRIPTS
+    if parts[0] == "references":
+        return len(parts) == 2 and parts[1] in FRONTLINE_REFERENCES
+    if parts[0] == "runtime":
+        return len(parts) == 2 and parts[1] in FRONTLINE_RUNTIME_FILES
+    return False
+
+
+def write_frontline_agent_metadata(staging):
+    """Give the team package a frontline-first default prompt."""
+    path = Path(staging) / "agents" / "openai.yaml"
+    ensure_dir(path.parent)
+    text = '''interface:
+  display_name: "AI咨询转化飞轮"
+  short_description: "分析咨询、学习销冠、陪练和持续提升个人转化能力"
+  default_prompt: "使用 AI咨询转化飞轮分析我的电话、微信或私信；需要时先做 YouNavi 转录、长图切片 OCR 和去重。优先使用团队已发布能力，并把我的有效经验沉淀到个人成长层。不要执行团队蒸馏、候选发布、版本回滚或读取其他员工资料。"
+
+policy:
+  allow_implicit_invocation: true
+'''
+    with io.open(str(path), "w", encoding="utf-8") as handle:
+        handle.write(text)
 
 
 def main():
@@ -191,6 +271,7 @@ def main():
     staging = Path(tempfile.mkdtemp(prefix="ai-flywheel-team-package-"))
     try:
         copy_base(source_root, staging)
+        write_frontline_agent_metadata(staging)
         pack_dir = staging / "institution-pack"
         ensure_dir(pack_dir)
         save_json(pack_dir / "package.json", capability)
@@ -202,7 +283,17 @@ def main():
         manifest = {
             "package_type": "team_runtime_skill",
             "base_skill_name": "AI咨询转化飞轮",
-            "base_skill_version": "v1.7",
+            "base_skill_version": "v1.9",
+            "runtime_role": "frontline",
+            "frontline_capabilities": [
+                "scan_personal_materials", "transcribe_audio", "ocr_long_images",
+                "analyse_personal_consultations", "learn_from_team_examples",
+                "personal_growth_overlay", "practice_coaching", "feedback_capture",
+            ],
+            "manager_capabilities_excluded": [
+                "team_distillation", "candidate_commit", "release_publish",
+                "release_rollback", "team_reporting", "manager_workspace_access",
+            ],
             "release_id": release.get("release_id"),
             "capability_version": version,
             "institution": institution,

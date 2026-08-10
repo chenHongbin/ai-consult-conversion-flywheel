@@ -11,7 +11,7 @@ description: AI咨询转化飞轮：面向民营医疗机构咨询师与咨询�
 
 名称和技术兼容说明见 [naming.md](references/naming.md)。
 
-这是给咨询师直接安装使用的一个 Skill，不要求用户理解“知识库、模块、蒸馏器、规则包”或 API。初始化、录音转写、截图/OCR、案例筛选、咨询转化八步法分析、能力蒸馏、AI 陪练和版本管理都藏在本 Skill 后面。
+这是给咨询师直接安装使用的一个 Skill，不要求用户理解“知识库、模块、蒸馏器、规则包”或 API。初始化、录音转写、截图/OCR、案例筛选、咨询转化八步法分析、能力蒸馏、AI 陪练和版本管理都藏在本 Skill 后面。即使用户还没有蒸馏，v1.9 的基础咨询运行时也可以立即分析对话、处理顾虑、安排回访和做陪练；团队发布包还会携带 [frontline-runtime.md](references/frontline-runtime.md)，把一线个人成长与主管团队蒸馏分开。
 
 默认服务咨询师的五类日常动作：
 
@@ -32,21 +32,21 @@ description: AI咨询转化飞轮：面向民营医疗机构咨询师与咨询�
 - **分析一条咨询**；
 - **管理我的团队**。
 
-咨询师日常不需要主动选择“分析模块”或“蒸馏模块”，自然语言自动路由即可。
+咨询师日常不需要主动选择“分析模块”或“蒸馏模块”，自然语言自动路由即可。专项能力注册表见 [specialist-routing.json](references/specialist-routing.json)，基础运行时见 [base-runtime.md](references/base-runtime.md)；需要检查路由、当前运行层和权限时使用 `scripts/route_consultation.py`。
 
 初始化、蒸馏、回访、陪练、知识升级和团队复盘都是隐藏工作流，由自然语言自动路由，不要求使用者理解内部模块、知识库或蒸馏器。
 
 需要详细数据模型时读取 [knowledge-model.md](references/knowledge-model.md)；需要患者决策状态、常见疑义和画像驱动陪练时读取 [patient-decision-insights.md](references/patient-decision-insights.md)；需要首次初始化或蒸馏时读取 [distillation-workflow.md](references/distillation-workflow.md)；需要分析、辅导或输出话术时读取 [analysis-and-coaching.md](references/analysis-and-coaching.md)；涉及脱敏、医疗边界或旧案例清洗时读取 [safety-and-sanitization.md](references/safety-and-sanitization.md)。
 
-需要咨询师前台话术、回访和陪练交互时读取 [consultant-front-door.md](references/consultant-front-door.md)；所有录音、电话、微信、私信、截图 OCR 和陪练默认读取 [consultation-eight-step-method.md](references/consultation-eight-step-method.md)；需要人物视角卡时读取 [perspective-lenses.md](references/perspective-lenses.md)；需要新人陪练时读取 [practice-coach.md](references/practice-coach.md)；需要团队管理、员工沟通、过程量、结果数据和周报/月度沟通时读取 [team-management.md](references/team-management.md)；需要按成员、日期、命名规范和夜间 Dream Cycle 工作时读取 [team-file-conventions.md](references/team-file-conventions.md)；需要生成或编辑咨询场景图片时读取 [visual-creative.md](references/visual-creative.md) 和 [consultation-visual-content-loop.md](references/consultation-visual-content-loop.md)，实际调用嵌入式 `skills/medical-image-studio/`；需要初始化本地/IMA资料源或持续蒸馏时读取 [workspace-onboarding.md](references/workspace-onboarding.md)、[source-ingestion.md](references/source-ingestion.md)、[dream-cycle.md](references/dream-cycle.md)、[full-scan-and-incremental.md](references/full-scan-and-incremental.md)、[initialization-and-distillation-prompts.md](references/initialization-and-distillation-prompts.md) 和 [champion-full-funnel-distillation.md](references/champion-full-funnel-distillation.md)。本 Skill 不内置任何机构示例知识库、真实录音、聊天截图或外部试跑报告；外部测试夹具只在 Skill 外部按需接入。
+需要咨询师前台话术、回访和陪练交互时读取 [consultant-front-door.md](references/consultant-front-door.md)；所有录音、电话、微信、私信、截图 OCR 和陪练默认读取 [consultation-eight-step-method.md](references/consultation-eight-step-method.md)；需要人物视角卡时读取 [perspective-lenses.md](references/perspective-lenses.md)；需要新人陪练时读取 [practice-coach.md](references/practice-coach.md)；需要团队管理、员工沟通、过程量、结果数据和周报/月度沟通时读取 [team-management.md](references/team-management.md)；需要按成员、日期、命名规范和夜间 Dream Cycle 工作时读取 [team-file-conventions.md](references/team-file-conventions.md)；需要生成或编辑咨询场景图片时读取 [visual-creative.md](references/visual-creative.md) 和 [consultation-visual-content-loop.md](references/consultation-visual-content-loop.md)，实际调用嵌入式 `skills/medical-image-studio/`；需要初始化本地/IMA资料源或持续蒸馏时读取 [workspace-onboarding.md](references/workspace-onboarding.md)、[source-ingestion.md](references/source-ingestion.md)、[dream-cycle.md](references/dream-cycle.md)、[full-scan-and-incremental.md](references/full-scan-and-incremental.md)、[initialization-and-distillation-prompts.md](references/initialization-and-distillation-prompts.md) 和 [champion-full-funnel-distillation.md](references/champion-full-funnel-distillation.md)。在团队运行包中，先读取 [frontline-runtime.md](references/frontline-runtime.md)，一线只处理个人资料和个人成长，不执行团队候选写回、发布或回滚。本 Skill 不内置任何机构示例知识库、真实录音、聊天截图或外部试跑报告；外部测试夹具只在 Skill 外部按需接入。
 
 处理通用咨询方法时读取 [consultation-base.md](references/consultation-base.md)。它是从历史培训课件和案例中去身份化、去机构化后形成的基础能力底座，不代表任何单一机构的事实。
 
 涉及机构专属能力包的写回、发布、运行时加载和反馈回流时，读取 [capability-package-loop.md](references/capability-package-loop.md)；需要机构介绍、科室项目、医生、优势、资质、案例和知识审核时读取 [institution-knowledge-loop.md](references/institution-knowledge-loop.md)。
 
-首批蒸馏回归集位于 [test-set](references/test-set/)，先用它验证阶段判断、异议识别、下一步建议和安全拦截，再接入更多机构真实案例。v0.4 的脚本位于 [scripts](scripts/)，包括低门槛工作区初始化、运行环境检测、长图切片/OCR、YouNavi 批量转写、批量蒸馏清单准备和团队周报统计。
+首批蒸馏回归集位于 [test-set](references/test-set/)，先用它验证阶段判断、异议识别、下一步建议和安全拦截，再接入更多机构真实案例。v1.8 增加 `scripts/ima_sync.py` 和 `scripts/personal_growth.py`：前者维护 IMA 清单、优先级、断点和配额事件，后者维护一线个人成长层；团队包只携带一线需要的转录、OCR、扫描、分析和个人成长工具。
 
-本版的审查结论记录在 [adversarial-review.md](references/adversarial-review.md)，修改规则时先检查其中的四个底层约束；患者决策洞察的字段、陪练边界和发布门槛记录在 [patient-decision-insights.md](references/patient-decision-insights.md)；v1.6 的可靠处理、影子试用和统一发布规则记录在 [v1.6-release-notes.md](references/v1.6-release-notes.md)。
+本版的审查结论记录在 [adversarial-review.md](references/adversarial-review.md)，修改规则时先检查其中的四个底层约束；患者决策洞察的字段、陪练边界和发布门槛记录在 [patient-decision-insights.md](references/patient-decision-insights.md)；v1.6 的可靠处理、影子试用和统一发布规则记录在 [v1.6-release-notes.md](references/v1.6-release-notes.md)；v1.9 的基础运行时、专项路由和无蒸馏模式记录在 [v1.9-release-notes.md](references/v1.9-release-notes.md)。
 
 岗位使用者审查记录在 [role-based-review.md](references/role-based-review.md)，涉及日常队列、输出长度或首次使用体验时优先参考它。
 
@@ -186,7 +186,7 @@ description: AI咨询转化飞轮：面向民营医疗机构咨询师与咨询�
 咨询主管每周完成一轮候选审核后，先把三类运行时组件绑定成一个原子版本：
 
 ```text
-python3 scripts/publish_release.py <工作空间根目录> --version v1.6
+python3 scripts/publish_release.py <工作空间根目录> --version v1.8
 ```
 
 然后运行：
@@ -373,7 +373,7 @@ python3 scripts/rollback_release.py <工作空间根目录> --previous
 
 每次反馈都记录为“保留、修改、拒绝或待验证”。只有满足以下条件，经验才可晋升为机构规则：有原始证据、有适用范围、有反例或限制、通过合规检查、得到管理者确认，并通过固定测试案例。
 
-建议能力包按版本管理：`v0.1 初始化`、`v0.2 首轮蒸馏`、`v0.3 反馈更新`、`v0.4 团队管理与结果验证`、`v0.5 成员纵向档案与夜间自动化`、`v0.6 前台极简`、`v0.7 后台个人档案归档与夜间队列接通`、`v0.8 双入口初始化与咨询销冠蒸馏提示词`、`v0.9 销冠全链路蒸馏与顾虑专项能力`、`v1.0 首次全量接管与增量蒸馏编排`、`v1.1 机构能力包写回、运行时加载与反馈闭环`、`v1.2 团队 Skill 发布与每周同步`、`v1.3 全量样本纳入、结果加权与八步法统一分析`、`v1.4 咨询能力蒸馏 + 机构知识同步蒸馏`、`v1.5 患者决策洞察与画像驱动陪练`、`v1.6 可靠资料处理、影子试用与统一原子发布`、`v1.7 咨询视觉弹药与嵌入式医疗生图引擎`。保留旧版本，支持回看和回滚；不要直接覆盖历史规则。
+建议能力包按版本管理：`v0.1 初始化`、`v0.2 首轮蒸馏`、`v0.3 反馈更新`、`v0.4 团队管理与结果验证`、`v0.5 成员纵向档案与夜间自动化`、`v0.6 前台极简`、`v0.7 后台个人档案归档与夜间队列接通`、`v0.8 双入口初始化与咨询销冠蒸馏提示词`、`v0.9 销冠全链路蒸馏与顾虑专项能力`、`v1.0 首次全量接管与增量蒸馏编排`、`v1.1 机构能力包写回、运行时加载与反馈闭环`、`v1.2 团队 Skill 发布与每周同步`、`v1.3 全量样本纳入、结果加权与八步法统一分析`、`v1.4 咨询能力蒸馏 + 机构知识同步蒸馏`、`v1.5 患者决策洞察与画像驱动陪练`、`v1.6 可靠资料处理、影子试用与统一原子发布`、`v1.7 咨询视觉弹药与嵌入式医疗生图引擎`、`v1.8 IMA 配额感知与团队/个人双层成长`、`v1.9 基础咨询运行时 + 专项能力路由 + 无蒸馏可用模式`。保留旧版本，支持回看和回滚；不要直接覆盖历史规则。
 
 机构事实还要记录生效日期、失效日期、责任人和复核周期。医生、价格、项目、优惠或流程变化时，暂停引用相关规则，提醒管理者重新确认。
 
