@@ -1,6 +1,6 @@
 # AI咨询转化飞轮使用说明书
 
-版本：v1.9
+版本：v1.10
 
 一句话理解：**安装后先用基础咨询运行时解决当天的问题；再让 AI 认识机构、蒸馏销冠完整的销售逻辑和流程，最后每天用它分析咨询、训练新人和管理团队。**
 
@@ -292,6 +292,18 @@ python3 scripts/personal_growth.py compose <工作空间根目录>
 ```
 
 团队成员仍然只安装一个 `.skill`。团队包包含一线所需的转录、OCR、扫描、分析、陪练和个人成长能力，但不包含主管的全团队蒸馏、候选写回、发布、回滚和团队报告脚本。
+
+### v1.10：视觉与内容素材编译器
+
+v1.10 把《咨询图片19维度核对清单》转成机器可读的视觉资产目录，支持医院、专家、报告、药品、排队、好评、锦旗、挂号、倒计时、权威报道、客情等素材类型。系统根据患者阶段、顾虑、渠道和目标选择主素材、备选素材与组合包，并同时给出配文方向、视觉 Brief 和下一步 CTA。
+
+```bash
+python3 scripts/select_visual_asset.py "患者担心医院不正规，帮我做一组聊天跟进素材" --channel chat
+python3 scripts/select_visual_asset.py "患者说太贵，做费用抗拒点QA图" --asset-type objection_qa --channel chat
+python3 scripts/record_visual_feedback.py <工作区根目录> --asset-id objection_qa --channel chat --status sent --replied yes
+```
+
+视觉素材不再只是“生一张图”，而是“素材 + 决策任务 + 配套文案 + CTA + 使用反馈”的完整交付单元。图片生成仍由嵌入式 `medical-image-studio` 执行。
 
 ### 支持的资料源
 

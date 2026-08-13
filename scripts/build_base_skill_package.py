@@ -31,7 +31,7 @@ def main():
     parser = argparse.ArgumentParser(description="Build the public/base Skill archive")
     parser.add_argument("--source-root", default=str(Path(__file__).resolve().parents[1]))
     parser.add_argument("--output-dir", default="")
-    parser.add_argument("--version", default="v1.9")
+    parser.add_argument("--version", default="v1.10")
     args = parser.parse_args()
     root = expand_path(args.source_root)
     output_dir = expand_path(args.output_dir) if args.output_dir else root

@@ -86,9 +86,10 @@
       "type": "frontline",
       "aliases": ["生图", "案例图", "朋友圈配图", "医院环境图", "跟进素材"],
       "keywords": ["生图", "图片", "配图", "海报", "案例图", "对比图", "环境图", "朋友圈素材", "视觉"],
-      "references": ["references/visual-creative.md", "references/consultation-visual-content-loop.md"],
-      "required_inputs": ["素材用途、渠道和视觉类型"],
-      "output_contract": ["文案目的", "图片提示词", "生成参数", "配套微信文案", "安全边界"],
+      "references": ["references/visual-creative.md", "references/consultation-visual-content-loop.md", "references/visual-asset-catalog.json", "references/visual-decision-matrix.json"],
+      "required_inputs": ["素材用途、渠道和视觉类型；可选：患者阶段、顾虑和目标"],
+      "output_contract": ["素材类型", "决策任务", "推荐素材组合", "图片提示词", "配套微信文案", "推荐CTA", "反馈字段"],
+      "tools": ["scripts/select_visual_asset.py", "scripts/record_visual_feedback.py"],
       "base_available": true
     },
     {

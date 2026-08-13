@@ -336,19 +336,21 @@ python3 scripts/rollback_release.py <工作空间根目录> --previous
 
 转介必须给出具体出口：涉及用药→转执业人员；涉及隐私→停止索取并说明用途；无法确认→暂不采用。不要只输出“有风险”。
 
-## 视觉弹药：咨询分析后的素材包
+## 视觉与内容素材编译器（v1.10）
 
 用户说“做一张图”“做个海报”“生成案例图”“做个对比图”“把这条录音做成培训图”时，直接生成，不在生成前要求用户确认，不把内部风险检查变成前台问题。用户要求分析一条真实咨询时，默认在复盘卡后附“朋友圈文案 + 微信下一步文案 + 推荐视觉类型 + 生图提示词”；当图片能降低当前顾虑的理解成本时，直接调用嵌入式 `skills/medical-image-studio/` 生成一张主图。
 
 自动完成以下工作：
 
-1. 判断图片用途：咨询回复、到院推动、朋友圈触达、医生科普、患者分享或团队培训；
-2. 判断媒介和画幅，按微信聊天、朋友圈、培训投屏等场景直接选默认尺寸；
-3. 优先使用已审核的机构事实、用户提供的原文和真实上传素材；
-4. 缺少事实时不编造，自动采用中性表达、占位信息或“示意图”表达；
-5. 自动脱敏姓名、电话、微信、头像、病历号和地址等个人信息；
-6. 使用 `skills/medical-image-studio/` 的项目契约、视觉路由、文字容量控制和 API 生成；
-7. 输出成品，不等待用户确认；用户后续可以直接要求改风格、改文案、换尺寸或重做。
+1. 读取 `references/visual-asset-catalog.json`，把医院、专家、报告、药品、排队、好评、锦旗、挂号、倒计时、权威报道等客户需要的素材类型都视为可调用资产；
+2. 使用 `scripts/select_visual_asset.py`，根据素材类型、患者阶段、顾虑、渠道和目标选择主素材、备选素材和组合包；
+3. 输出决策任务、配文方向、视觉 Brief、推荐 CTA 和组合顺序；
+4. 判断媒介和画幅，按微信聊天、朋友圈、群发、培训投屏等场景直接选默认尺寸；
+5. 使用 `skills/medical-image-studio/` 的项目契约、视觉路由、文字容量控制和 API 生成；
+6. 输出成品，不等待用户确认；用户后续可以直接要求改风格、改文案、换尺寸或重做；
+7. 使用 `scripts/record_visual_feedback.py` 记录发送、回复、预约和到院结果，反哺素材推荐。
+
+素材目录和决策矩阵见 [visual-asset-catalog.json](references/visual-asset-catalog.json) 与 [visual-decision-matrix.json](references/visual-decision-matrix.json)。
 
 视觉生成的用户审核权体现在“可随时修改和重做”，而不是要求用户在每次生成前确认。Skill 不自动发送、发布或写入外部系统。图片项目、提示词和 QA 记录写入 `_系统/视觉生成`，成品写入 `07_我的产出/06_咨询视觉素材`。
 
@@ -360,7 +362,7 @@ python3 scripts/rollback_release.py <工作空间根目录> --previous
 - 医院环境图：有真实照片时做优化和排版，没有真实照片时生成“环境示意图”，不伪装成真实院区；
 - 医疗前后效果图：只有用户提供真实且已授权的素材时才做整理和展示；没有真实证据时自动转为“AI案例示意/过程示意”，不得把生成图包装成真实疗效证据。
 
-完整路由、输出目录和三条可直接试跑的提示词见 [consultation-visual-content-loop.md](references/consultation-visual-content-loop.md)。
+完整路由、输出目录和三条可直接试跑的提示词见 [consultation-visual-content-loop.md](references/consultation-visual-content-loop.md)。v1.10 发布说明见 [v1.10-release-notes.md](references/v1.10-release-notes.md)。
 
 ## 规则与安全边界
 

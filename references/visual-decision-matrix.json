@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0-visual-decision-matrix",
+  "version": "v1.10",
+  "stage_aliases": {
+    "首次沟通":"first_contact","开场":"first_contact","初次":"first_contact",
+    "信任":"trust_building","专业":"trust_building","不正规":"trust_building",
+    "科普":"education","解释":"education","看不懂":"education",
+    "抗拒":"objection","异议":"objection","犹豫":"objection",
+    "预约":"appointment","邀约":"appointment","到院":"appointment",
+    "回访":"followup","跟进":"followup","爽约":"followup","失联":"followup",
+    "朋友圈":"nurture","群发":"nurture","持续触达":"nurture",
+    "培训":"training","陪练":"training"
+  },
+  "barrier_aliases": {
+    "价格":"price","太贵":"price","收费":"price","预算":"price",
+    "效果":"effect","疗效":"effect","复发":"effect","失败":"effect",
+    "信任":"trust","正规":"trust","靠谱":"trust","医生":"trust",
+    "距离":"distance","太远":"distance","交通":"distance",
+    "时间":"time","没空":"time","排号":"time",
+    "家人":"family","老公":"family","老婆":"family","父母":"family",
+    "害怕":"fear","担心":"fear","焦虑":"fear",
+    "不懂":"understanding","原理":"understanding","怎么回事":"understanding",
+    "预约":"action_urgency","行动":"action_urgency","截止":"action_urgency",
+    "好评":"social_proof","口碑":"social_proof","排队":"social_proof",
+    "关怀":"emotion","情绪":"emotion","问候":"emotion"
+  },
+  "goal_aliases": {
+    "建立信任":"trust_building","解释流程":"understanding","解释顾虑":"understanding",
+    "推进预约":"appointment","推动到院":"appointment","处理抗拒":"objection",
+    "持续触达":"nurture","维护客情":"emotion","培训新人":"training"
+  },
+  "default_bundles": {
+    "trust_building":["hospital_exterior","expert_profile","consultation_scene"],
+    "education":["health_education","anatomy_diagram","report"],
+    "objection":["objection_qa","review_chat","expert_profile"],
+    "appointment":["appointment_card","reception_desk","hospital_environment"],
+    "followup":["care_emotion","objection_qa","appointment_card"],
+    "nurture":["health_education","authority_news","care_emotion"],
+    "training":["objection_qa","consultation_scene","asset_bundle"]
+  }
+}

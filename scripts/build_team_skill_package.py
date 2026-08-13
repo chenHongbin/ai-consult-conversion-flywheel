@@ -50,6 +50,8 @@ FRONTLINE_SCRIPTS = {
     "ima_sync.py",
     "personal_growth.py",
     "route_consultation.py",
+    "select_visual_asset.py",
+    "record_visual_feedback.py",
     "verify_consult_workspace.py",
 }
 
@@ -69,6 +71,8 @@ FRONTLINE_REFERENCES = {
     "safety-and-sanitization.md",
     "source-ingestion.md",
     "specialist-routing.json",
+    "visual-asset-catalog.json",
+    "visual-decision-matrix.json",
     "visual-creative.md",
     "workspace-initialization-contract.md",
     "workspace-onboarding.md",
