@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0-base-runtime",
   "runtime_name": "AI咨询转化飞轮基础咨询运行时",
-  "runtime_version": "v1.10",
+  "runtime_version": "v2.0",
   "always_available": true,
   "requires_distillation": false,
   "scope": "generic_consultation_conversion",
@@ -28,6 +28,13 @@
       "label": "单动作陪练",
       "status": "always_on",
       "references": ["references/practice-coach.md"]
+    },
+    {
+      "id": "manager_workbench",
+      "label": "咨询主管每日经营与能力复制",
+      "status": "manager_workspace_required",
+      "references": ["references/manager-workbench.md", "references/team-management.md"],
+      "tools": ["scripts/generate_management_dashboard.py", "scripts/record_management_action.py", "scripts/promote_team_capability.py"]
     },
     {
       "id": "visual_content",

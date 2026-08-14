@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Verify that a local workspace follows the canonical v1.9 layout."""
+"""Verify that a local workspace follows the canonical v1.9/v2.0 layout."""
 
 import argparse
 import io
@@ -42,12 +42,13 @@ def locate_workspace(selected):
 def verify(selected):
     root, location = locate_workspace(selected)
     missing_visible = [name for name, _ in VISIBLE_FOLDERS if not (root / name).is_dir()]
-    missing_system = [name for name in SYSTEM_FOLDERS if not (root / "_系统" / name).is_dir()]
     manifest_path = root / "_系统" / MANIFEST_NAME
     manifest = load_json(manifest_path, {}) or {}
+    manifest_version = manifest.get("layout_version")
+    missing_system = [name for name in SYSTEM_FOLDERS if not (root / "_系统" / name).is_dir()]
     manifest_ok = (
         manifest.get("product") == "AI咨询转化飞轮"
-        and manifest.get("layout_version") == "v1.9"
+        and manifest_version in ("v1.9", "v2.0")
         and manifest.get("workspace_root") == str(root)
         and manifest.get("visible_folders") == [name for name, _ in VISIBLE_FOLDERS]
     )
@@ -65,9 +66,10 @@ def verify(selected):
         "missing_visible_folders": missing_visible,
         "missing_system_folders": missing_system,
         "manifest_ok": manifest_ok,
+        "layout_version": manifest_version,
         "expected_container": WORKSPACE_NAME,
         "message": {
-            "canonical": "工作区符合 AI咨询转化飞轮 v1.9 标准目录。",
+            "canonical": "工作区符合 AI咨询转化飞轮标准目录，可由v2.0按需补充管理工作台数据。",
             "missing": "还没有创建标准咨询转化工作区。",
             "needs_repair": "工作区存在但目录或清单不完整，请运行初始化脚本补齐；不要手工改名。",
         }[status],
