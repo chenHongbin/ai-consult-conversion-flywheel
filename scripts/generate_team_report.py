@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
+from management_data import EVENTS_FILE, TRAINING_FILE, latest_by, load_jsonl, management_root
 
 
 NUMERIC_FIELDS = [
@@ -150,6 +151,44 @@ def pct(value):
 def load_json(path, default):
     if not path.is_file():
         return default
+
+
+def management_metric_lines(root, people):
+    """Summarize manager time, training adoption, review pass and replication."""
+    store = management_root(root)
+    events = load_jsonl(store / EVENTS_FILE)
+    trainings = list(latest_by(load_jsonl(store / TRAINING_FILE), "action_id").values())
+    review_minutes = sum(parse_number(row.get("duration_minutes")) for row in events
+                         if row.get("event") in ("complete", "review"))
+    employee_ids = set(str(key) for key in people if key and key != "未标记员工")
+    adopted = set()
+    passed = set()
+    replicated = set()
+    for training in trainings:
+        source_employee = str(training.get("source_employee") or "")
+        for employee in training.get("adopted_employees") or []:
+            adopted.add(str(employee))
+        for employee in training.get("passed_employees") or []:
+            employee = str(employee)
+            passed.add(employee)
+            if not source_employee or employee != source_employee:
+                replicated.add(employee)
+
+    def format_rate(numerator, denominator):
+        if not denominator:
+            return "无法判断（分母缺失）"
+        return "{:.1f}%（{}/{}）".format(float(numerator) / denominator * 100, numerator, denominator)
+
+    return [
+        "## 管理与能力复制指标",
+        "",
+        "- 主管复核耗时：{}。".format("{:.0f} 分钟".format(review_minutes) if review_minutes else "缺失"),
+        "- 训练动作采用率：{}。".format(format_rate(len(adopted), len(employee_ids))),
+        "- 训练动作复查通过率：{}。".format(format_rate(len(passed), len(adopted))),
+        "- 销冠动作团队复制率：{}。".format(format_rate(len(replicated), max(len(employee_ids) - 1, 0))),
+        "- 来源：`_系统/管理工作台/management-events.jsonl` 与 `training-actions.jsonl`；缺失值不按 0 计算。",
+        "",
+    ]
     try:
         with io.open(str(path), "r", encoding="utf-8") as handle:
             return json.load(handle)
@@ -238,6 +277,11 @@ def make_report(root, start, end, employee_filter=None):
                 "",
             ])
     lines.extend([
+        "## 经营指标补充",
+        "",
+        "- 有效咨询到院率定义为：到院数 / 有效咨询量；每名咨询师有效到院数取本周期 arrivals。",
+        "- 日报回答今天处理什么；周报回答教了什么、谁学会了；月报回答哪些能力被复制、结果是否改善。",
+        "",
         "## 翻倍目标状态",
         "",
         "- 当前仅生成目标追踪框架，不把目标当作已实现结果。",
@@ -251,6 +295,7 @@ def make_report(root, start, end, employee_filter=None):
         "- 月度一对一沟通后，把员工确认的支持动作放入成员目录的 `02_辅导方案`；",
         "- 不将本报告自动写入绩效定级或机构能力包。",
     ])
+    lines.extend(management_metric_lines(root, people))
     return "\n".join(lines) + "\n"
 
 

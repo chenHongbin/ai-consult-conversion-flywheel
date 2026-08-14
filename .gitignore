@@ -1,4 +1,6 @@
 scripts/__pycache__/
+.playwright-cli/
+output/
 *.pyc
 .DS_Store
 咨询转化工作区/

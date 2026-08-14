@@ -206,7 +206,7 @@ def main():
         system / WORKSPACE_MANIFEST_NAME,
         {
             "product": "AI咨询转化飞轮",
-            "layout_version": "v1.9",
+            "layout_version": "v2.0",
             "workspace_root": str(root),
             "container_name": STANDARD_WORKSPACE_NAME if not args.use_root else "用户指定的工作区本身",
             "created_by": "scripts/init_consult_workspace.py",
@@ -286,7 +286,7 @@ def main():
         profile,
         json.dumps(
             {
-                "version": "1.9",
+                "version": "2.0",
                 "workspace": str(root),
                 "runtime": {"preferred": ["workbuddy", "trae", "codex", "claude"]},
                 "sources": {
@@ -319,7 +319,7 @@ def main():
                 },
                 "release": {
                     "active_version": "base_only",
-                    "candidate_version": "v1.9",
+                    "candidate_version": "v2.0",
                     "auto_publish": False,
                 },
                 "patient_insights": {
@@ -333,6 +333,13 @@ def main():
                     "root": "_系统/个人成长",
                     "team_rules_override_personal": True,
                     "personal_experience_auto_promotes_to_team": False,
+                },
+                "manager_workbench": {
+                    "enabled": True,
+                    "dashboard": "08_团队管理/04_团队报告/04_数据看板/咨询管理工作台.html",
+                    "data_root": "_系统/管理工作台",
+                    "refresh": "nightly_plus_manual",
+                    "primary_user": "consultation_manager",
                 },
             },
             ensure_ascii=False,
@@ -365,7 +372,7 @@ def main():
                 "first_case_ready": False,
                 "team_management_ready": False,
                 "metrics_baseline_ready": False,
-                "active_capability_version": "v0.1",
+                "active_capability_version": "v2.0-base",
             },
             ensure_ascii=False,
             indent=2,
@@ -412,6 +419,7 @@ def main():
                 "schedule": "22:00",
                 "scheduler": "workbuddy_or_codex_agent",
                 "scan_script": "scripts/run_nightly_cycle.py",
+                "dashboard_script": "scripts/generate_management_dashboard.py",
                 "stability_minutes": 30,
                 "run_when_computer_wakes": True,
                 "retry_next_run": True,
@@ -455,7 +463,7 @@ def main():
                 "members": parse_members(args.members),
                 "system_folder": str(system),
                 "manifest": str(system / WORKSPACE_MANIFEST_NAME),
-                "layout_version": "v1.9",
+                "layout_version": "v2.0",
                 "canonical_layout": True,
                 "profile": str(profile),
             },

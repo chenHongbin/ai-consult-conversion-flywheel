@@ -93,6 +93,18 @@
       "base_available": true
     },
     {
+      "id": "manager_workbench",
+      "label": "咨询主管每日经营工作台",
+      "type": "manager",
+      "aliases": ["开始今天的工作", "复核今日重点", "生成晨会训练", "辅导这个员工", "复盘今天", "刷新咨询管理工作台", "咨询管理工作台"],
+      "keywords": ["今日管理", "管理待办", "团队断点", "晨会训练", "复查任务", "员工辅导", "工作台", "管理日清"],
+      "references": ["references/manager-workbench.md", "references/management-data-contract.md", "references/team-management.md", "references/champion-full-funnel-distillation.md"],
+      "required_inputs": ["标准咨询转化工作区；允许只有单通录音、单次微信或空工作区"],
+      "output_contract": ["今日唯一团队断点", "优先复核队列", "待辅导员工", "单动作训练", "复查标准", "本地HTML工作台"],
+      "tools": ["scripts/generate_management_dashboard.py", "scripts/record_management_action.py", "scripts/record_communication_sample.py", "scripts/record_training_action.py", "scripts/promote_team_capability.py"],
+      "base_available": false
+    },
+    {
       "id": "champion_distillation",
       "label": "销冠完整链路蒸馏",
       "type": "manager",

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Deterministic front-door router for AI咨询转化飞轮 v1.9.
+"""Deterministic front-door router for AI咨询转化飞轮 v2.0.
 
 The router does not generate a consultation answer. It identifies the primary
 specialist capability, reports the runtime layers available to the caller, and

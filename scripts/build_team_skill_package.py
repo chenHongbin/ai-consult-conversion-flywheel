@@ -289,7 +289,7 @@ def main():
         manifest = {
             "package_type": "team_runtime_skill",
             "base_skill_name": "AI咨询转化飞轮",
-            "base_skill_version": "v1.9",
+            "base_skill_version": "v2.0-frontline",
             "runtime_role": "frontline",
             "frontline_capabilities": [
                 "scan_personal_materials", "transcribe_audio", "ocr_long_images",
@@ -338,7 +338,7 @@ def main():
         save_json(insight_dir / "manifest.json", insight_manifest)
         manifest["patient_insight_hash"] = sha256(insight_dir / "package.json")
         manifest["patient_insight_runtime_hash"] = sha256(insight_dir / "runtime-context.md")
-        manifest["release_id"] = "release-" + hashlib.sha256((
+        manifest["package_fingerprint"] = "package-" + hashlib.sha256((
             manifest["capability_hash"] + manifest["knowledge_hash"] + manifest["patient_insight_hash"]
         ).encode("utf-8")).hexdigest()[:16]
         save_json(pack_dir / "manifest.json", manifest)

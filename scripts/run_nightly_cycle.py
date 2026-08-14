@@ -13,6 +13,7 @@ from pathlib import Path
 
 from compat import ensure_dir, expand_path
 from archive_team_inbox import archive_workspace
+from generate_management_dashboard import build_dashboard
 
 
 AUDIO_EXTS = {".mp3", ".m4a", ".wav", ".aac", ".flac", ".ogg", ".amr"}
@@ -227,6 +228,19 @@ def main():
         for task in merged_tasks:
             handle.write(json.dumps(task, ensure_ascii=False) + "\n")
     save_json(state_path, state)
+    dashboard_path = ""
+    dashboard_generated_at = ""
+    data_completeness = "missing"
+    pending_analysis_count = len([item for item in merged_tasks if item.get("status", "queued") not in ("completed", "skipped")])
+    failed_root = root / "_系统" / "失败记录"
+    failed_item_count = sum(1 for item in failed_root.rglob("*") if item.is_file()) if failed_root.is_dir() else 0
+    try:
+        dashboard_data, dashboard_output = build_dashboard(root, "today", report_date)
+        dashboard_path = str(dashboard_output)
+        dashboard_generated_at = dashboard_data.get("generated_at", "")
+        data_completeness = dashboard_data.get("periods", {}).get("today", {}).get("data_status", {}).get("data_completeness", "missing")
+    except (ValueError, IOError) as exc:
+        skipped["dashboard_generation_failed"] = str(exc)
     log_path = log_dir / "夜间运行-{}.json".format(report_date)
     save_json(log_path, {
         "date": report_date,
@@ -237,10 +251,17 @@ def main():
         "archive_items": len(archive_rows),
         "skipped": skipped,
         "queue": str(queue_path),
+        "dashboard_path": dashboard_path,
+        "dashboard_generated_at": dashboard_generated_at,
+        "data_completeness": data_completeness,
+        "pending_analysis_count": pending_analysis_count,
+        "failed_item_count": failed_item_count,
         "note": "本脚本负责扫描、去重和排队；转写、OCR、咨询分析和看板生成由定时 Agent 继续执行。",
     })
     print(json.dumps({"date": report_date, "tasks_created": len(tasks),
-                      "queue": str(queue_path), "log": str(log_path)}, ensure_ascii=False))
+                      "queue": str(queue_path), "log": str(log_path), "dashboard_path": dashboard_path,
+                      "dashboard_generated_at": dashboard_generated_at, "data_completeness": data_completeness,
+                      "pending_analysis_count": pending_analysis_count, "failed_item_count": failed_item_count}, ensure_ascii=False))
     return 0
 
 

@@ -42,7 +42,7 @@ def main():
     workspace = expand_path(args.workspace_root)
     base_runtime = load_json(BASE_RUNTIME_PATH, {
         "runtime_name": "AI咨询转化飞轮基础咨询运行时",
-        "runtime_version": "v1.10",
+        "runtime_version": "v2.0",
         "always_available": True,
         "requires_distillation": False,
     })
