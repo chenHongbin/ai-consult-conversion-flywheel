@@ -31,6 +31,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           PACKAGE="dist/AI咨询转化飞轮_v$(cat VERSION).skill"
+          RELEASE_PACKAGE="dist/ai-consult-conversion-flywheel_v$(cat VERSION).skill"
+          mv "$PACKAGE" "$RELEASE_PACKAGE"
           gh release create "$GITHUB_REF_NAME" \
-            "$PACKAGE" \
+            "$RELEASE_PACKAGE" \
             --generate-notes --title "AI咨询转化飞轮 $GITHUB_REF_NAME"
