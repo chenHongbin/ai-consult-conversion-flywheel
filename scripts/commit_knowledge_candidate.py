@@ -16,6 +16,10 @@ import re
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
+from workspace_paths import locate_workspace
+from approval_ledger import validate_approval
+from release_utils import validate_version
+from privacy_guard import scan_value
 
 
 PHONE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
@@ -56,12 +60,11 @@ def sha256(path):
 
 
 def contains_sensitive(value):
-    text = json.dumps(value, ensure_ascii=False)
-    return bool(PHONE.search(text) or ID_CARD.search(text) or EMAIL.search(text) or WECHAT.search(text))
+    return bool(scan_value(value))
 
 
 def knowledge_root(workspace):
-    return workspace / "咨询转化工作区" / "_系统" / "当前机构知识"
+    return locate_workspace(workspace) / "_系统" / "当前机构知识"
 
 
 def active_path(workspace):
@@ -211,6 +214,7 @@ def main():
     parser.add_argument("workspace_root")
     parser.add_argument("candidate", help="knowledge candidate JSON")
     parser.add_argument("--publish", action="store_true", help="publish the version pointer")
+    parser.add_argument("--approval-id", help="independent manager approval receipt bound to this candidate")
     parser.add_argument("--version", help="explicit version such as v0.1")
     args = parser.parse_args()
 
@@ -218,6 +222,12 @@ def main():
     candidate_path = expand_path(args.candidate)
     candidate = load_json(candidate_path, None)
     errors = validate_candidate(candidate)
+    approval = None
+    if args.publish:
+        try:
+            approval = validate_approval(workspace, "knowledge", candidate_path, args.approval_id)
+        except ValueError as exc:
+            errors.append(str(exc))
     if errors:
         print(json.dumps({"status": "rejected", "errors": errors}, ensure_ascii=False))
         return 2
@@ -225,7 +235,11 @@ def main():
     root = knowledge_root(workspace)
     ensure_dir(root / "versions")
     active, base = load_active_knowledge(workspace)
-    version = args.version or next_version(active)
+    try:
+        version = validate_version(args.version or next_version(active))
+    except ValueError as exc:
+        print(json.dumps({"status": "rejected", "errors": [str(exc)]}, ensure_ascii=False))
+        return 2
     facts, conflicts = merge_facts(base.get("facts", []), (candidate.get("delta") or {}).get("facts_upsert", []))
     for fact_id in (candidate.get("delta") or {}).get("deprecate_fact_ids", []):
         for item in facts:
@@ -242,6 +256,7 @@ def main():
         "conflicts": conflicts,
         "last_source_run_id": candidate.get("source_run_id"),
         "last_change_summary": candidate.get("change_summary", []),
+        "approval_id": approval.get("approval_id") if approval else None,
     }
     version_dir = root / "versions" / version
     ensure_dir(version_dir)
@@ -264,6 +279,7 @@ def main():
             "runtime_context_path": str(runtime_path),
             "published_at": datetime.datetime.now().isoformat(),
             "source_run_id": candidate.get("source_run_id"),
+            "approval_id": approval.get("approval_id"),
             "scope": merged.get("scope", {}),
             "approved_fact_count": sum(1 for item in facts if item.get("status") in ("active", "approved", "confirmed")),
             "pending_fact_count": sum(1 for item in facts if item.get("status") in ("pending_review", "conflict")),
@@ -273,7 +289,7 @@ def main():
     else:
         active_payload = active
 
-    visible_dir = workspace / "咨询转化工作区" / "07_我的产出" / "05_机构知识更新"
+    visible_dir = locate_workspace(workspace) / "07_我的产出" / "05_机构知识更新"
     ensure_dir(visible_dir)
     visible_name = version + ("_机构知识更新.md" if published else "_机构知识候选.md")
     with io.open(str(visible_dir / visible_name), "w", encoding="utf-8") as handle:

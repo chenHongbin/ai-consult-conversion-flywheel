@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from management_data import SAMPLES_FILE, append_jsonl, management_root, now_iso
+from daily_review import stable_id
 
 
 def split_values(value):
@@ -15,9 +16,12 @@ def split_values(value):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Record a v2.0 communication sample card.")
+    parser = argparse.ArgumentParser(description="Record a V2.1 evidence-linked communication sample card.")
     parser.add_argument("workspace_root")
     parser.add_argument("--sample-id", default="")
+    parser.add_argument("--artifact-id", default="")
+    parser.add_argument("--conversation-id", default="")
+    parser.add_argument("--patient-case-id", default="")
     parser.add_argument("--source", default="")
     parser.add_argument("--source-hash", default="")
     parser.add_argument("--employee-id", required=True)
@@ -55,10 +59,18 @@ def main():
                 "patient_facts": args.patient_facts, "consultant_actions": args.consultant_actions,
             }, ensure_ascii=False, sort_keys=True)
             source_hash = hashlib.sha256(identity.encode("utf-8")).hexdigest()
-    sample_id = args.sample_id or "S-" + source_hash[:12]
+    artifact_id = args.artifact_id or stable_id("ART", source_hash)
+    conversation_id = args.conversation_id or stable_id("CONV", args.employee_id, source_hash)
+    patient_case_id = args.patient_case_id or stable_id("PC", conversation_id)
+    consultant_day_id = stable_id("CD", args.employee_id, args.date)
+    team_day_id = stable_id("TD", args.date)
+    sample_id = args.sample_id or conversation_id
     timestamp = now_iso()
     row = {
-        "schema_version": "2.0-communication-sample", "sample_id": sample_id,
+        "schema_version": "2.1-communication-sample", "sample_id": sample_id,
+        "artifact_id": artifact_id, "conversation_id": conversation_id,
+        "patient_case_id": patient_case_id, "consultant_day_id": consultant_day_id,
+        "team_day_id": team_day_id,
         "source": args.source, "source_hash": source_hash, "employee_id": args.employee_id,
         "employee_name": args.employee_name, "date": args.date, "medium": args.medium,
         "stage": args.stage, "patient_facts": split_values(args.patient_facts),

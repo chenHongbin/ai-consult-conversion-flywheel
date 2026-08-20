@@ -64,17 +64,36 @@ def load_previous(path):
 
 def main():
     parser = argparse.ArgumentParser(description="Slice and OCR Chinese chat screenshots.")
-    parser.add_argument("input", help="image file or directory")
-    parser.add_argument("--output-dir", required=True)
+    parser.add_argument("input", nargs="?", help="image file or directory")
+    parser.add_argument("--output-dir", default="")
     parser.add_argument("--lang", default="chi_sim+eng")
     parser.add_argument("--max-height", type=int, default=2400)
     parser.add_argument("--overlap", type=int, default=160)
     parser.add_argument("--psm", default="6")
+    parser.add_argument("--check", action="store_true", help="verify image backend, Tesseract and language packs")
     args = parser.parse_args()
 
     tesseract = shutil.which("tesseract")
     if not tesseract:
         print("ERROR: tesseract is not installed or not on PATH", file=sys.stderr)
+        return 2
+    langs_process = subprocess.Popen([tesseract, "--list-langs"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    langs_stdout, _ = langs_process.communicate()
+    available_langs = set(langs_stdout.decode("utf-8", "replace").splitlines())
+    requested_langs = set(item for item in args.lang.split("+") if item)
+    missing_langs = sorted(requested_langs - available_langs)
+    from slice_long_images import image_backend
+    if args.check:
+        backend = image_backend()
+        ready = bool(backend) and not missing_langs
+        print(json.dumps({"status": "ready" if ready else "missing_dependency", "image_backend": backend,
+                          "tesseract": tesseract, "requested_languages": sorted(requested_langs),
+                          "missing_languages": missing_langs}, ensure_ascii=False))
+        return 0 if ready else 2
+    if not args.input or not args.output_dir:
+        parser.error("input and --output-dir are required unless --check is used")
+    if missing_langs:
+        print("ERROR: missing Tesseract languages: {0}".format(", ".join(missing_langs)), file=sys.stderr)
         return 2
     output_root = expand_path(args.output_dir)
     slices_root = output_root / "slices"

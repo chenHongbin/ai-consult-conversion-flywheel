@@ -109,7 +109,7 @@ class ManagerWorkbenchTests(unittest.TestCase):
             run_json(DASHBOARD, str(workspace), "--date", "2026-08-14")
             data = load_json(store / "dashboard-data.json")["periods"]["today"]
             self.assertEqual(data["data_status"]["sample_count"], 1)
-            self.assertEqual(data["summary"]["main_breakpoint"], "新断点")
+            self.assertIn("尚未达到", data["summary"]["main_breakpoint"])
 
     def test_same_stable_id_uses_latest_even_if_source_hash_changes(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -124,7 +124,7 @@ class ManagerWorkbenchTests(unittest.TestCase):
             run_json(DASHBOARD, str(workspace), "--date", "2026-08-14")
             today = load_json(workspace / "_系统" / "管理工作台" / "dashboard-data.json")["periods"]["today"]
             self.assertEqual(today["data_status"]["sample_count"], 1)
-            self.assertEqual(today["summary"]["main_breakpoint"], "新版本")
+            self.assertIn("尚未达到", today["summary"]["main_breakpoint"])
 
     def test_management_events_fold_to_current_status(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -242,11 +242,16 @@ class ManagerWorkbenchTests(unittest.TestCase):
             with zipfile.ZipFile(built["package"], "r") as archive:
                 names = set(archive.namelist())
             self.assertIn("scripts/generate_management_dashboard.py", names)
+            self.assertIn("scripts/daily_review.py", names)
+            self.assertIn("references/v2.1-case-report-contract.md", names)
+            self.assertNotIn(".DS_Store", names)
+            self.assertFalse(any(name.startswith(".playwright-cli/") for name in names))
             self.assertIn("assets/management-dashboard.template", names)
             self.assertNotIn("08_团队管理/04_团队报告/04_数据看板/咨询管理工作台.html", names)
             sys.path.insert(0, str(SCRIPTS))
             import build_team_skill_package as builder
             self.assertFalse(builder.should_copy_frontline(Path("scripts/generate_management_dashboard.py")))
+            self.assertFalse(builder.should_copy_frontline(Path("scripts/daily_review.py")))
             self.assertFalse(builder.should_copy_frontline(Path("scripts/promote_team_capability.py")))
             self.assertFalse(builder.should_copy_frontline(Path("references/manager-workbench.md")))
 
@@ -279,7 +284,11 @@ class ManagerWorkbenchTests(unittest.TestCase):
                 team_manifest = json.loads(archive.read("institution-pack/manifest.json").decode("utf-8"))
                 release = json.loads(archive.read("institution-pack/release.json").decode("utf-8"))
             self.assertNotIn("scripts/generate_management_dashboard.py", team_names)
+            self.assertNotIn("scripts/daily_review.py", team_names)
             self.assertNotIn("scripts/promote_team_capability.py", team_names)
+            self.assertNotIn("scripts/content_asset.py", team_names)
+            self.assertIn("scripts/content_feedback.py", team_names)
+            self.assertIn("institution-pack/content-runtime.json", team_names)
             self.assertNotIn("references/manager-workbench.md", team_names)
             self.assertFalse(any(name.endswith("咨询管理工作台.html") for name in team_names))
             self.assertFalse(team_manifest["contains_manager_workspace"])

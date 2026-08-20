@@ -10,6 +10,7 @@ import re
 import sys
 
 from compat import ensure_dir, expand_path
+from workspace_paths import locate_workspace
 
 
 def load_json(path):
@@ -36,7 +37,7 @@ def main():
     parser.add_argument("--previous", action="store_true", help="switch to the highest version below the current one")
     args = parser.parse_args()
     workspace = expand_path(args.workspace_root)
-    root = workspace / "咨询转化工作区" / "_系统" / "当前能力包"
+    root = locate_workspace(workspace) / "_系统" / "当前能力包"
     active_path = root / "active.json"
     active = load_json(active_path) if active_path.is_file() else {}
     current = active.get("active_version")

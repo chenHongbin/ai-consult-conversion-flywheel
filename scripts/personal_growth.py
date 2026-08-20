@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
+from workspace_paths import locate_workspace
 
 
 def now():
@@ -18,7 +19,7 @@ def now():
 
 
 def root(workspace):
-    return expand_path(workspace) / "咨询转化工作区" / "_系统" / "个人成长"
+    return locate_workspace(workspace) / "_系统" / "个人成长"
 
 
 def file_paths(workspace):

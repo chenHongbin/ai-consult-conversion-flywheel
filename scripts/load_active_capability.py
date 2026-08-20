@@ -9,7 +9,10 @@ import sys
 from pathlib import Path
 
 from compat import expand_path
-from release_utils import component_snapshot, load_release_active, load_release_file
+from release_utils import component_snapshot, load_release_active, load_release_file, sha256
+from workspace_paths import locate_workspace
+from workspace_paths import assert_within
+from project_version import core_version_tag
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,10 +42,10 @@ def main():
     parser.add_argument("workspace_root")
     parser.add_argument("--format", choices=("json", "markdown"), default="json")
     args = parser.parse_args()
-    workspace = expand_path(args.workspace_root)
+    workspace = locate_workspace(args.workspace_root)
     base_runtime = load_json(BASE_RUNTIME_PATH, {
         "runtime_name": "AI咨询转化飞轮基础咨询运行时",
-        "runtime_version": "v2.0",
+        "runtime_version": core_version_tag(),
         "always_available": True,
         "requires_distillation": False,
     })
@@ -51,7 +54,9 @@ def main():
     release_valid = True
     release_error = None
     if release_active.get("status") == "active":
-        if not release or release.get("release_id") != release_active.get("release_id"):
+        release_path = release_active.get("release_path")
+        if (not release or release.get("release_id") != release_active.get("release_id")
+                or not release_path or sha256(release_path) != release_active.get("release_hash")):
             release_valid = False
             release_error = "unified_release_invalid"
         else:
@@ -63,27 +68,45 @@ def main():
                     release_error = str(exc)
                     break
                 expected = (release.get("components") or {}).get(component, {})
-                if current.get("status") != expected.get("status") or current.get("version") != expected.get("version") or current.get("package_hash") != expected.get("package_hash"):
+                if (current.get("status") != expected.get("status")
+                        or current.get("version") != expected.get("version")
+                        or current.get("package_hash") != expected.get("package_hash")
+                        or current.get("runtime_hash") != expected.get("runtime_hash")):
                     release_valid = False
                     release_error = "component_not_bound_to_release:{0}".format(component)
                     break
+            if release_valid:
+                content = (release.get("components") or {}).get("content_runtime", {})
+                try:
+                    content_package = assert_within(content.get("package_path"), workspace, "content_runtime_package")
+                    content_runtime = assert_within(content.get("runtime_context_path"), workspace, "content_runtime_context")
+                except ValueError as exc:
+                    release_valid = False
+                    release_error = str(exc)
+                if release_valid and (sha256(content_package) != content.get("package_hash")
+                                      or sha256(content_runtime) != content.get("runtime_hash")):
+                    release_valid = False
+                    release_error = "component_not_bound_to_release:content_runtime"
     if not release_valid:
         sys.stdout.write(json.dumps({"status": "safe_mode", "message": "统一发布版本校验失败，已停止读取机构专属运行时。", "reason": release_error,
                                      "release": release_active}, ensure_ascii=False, indent=2) + "\n")
         return 0
-    active_path = workspace / "咨询转化工作区" / "_系统" / "当前能力包" / "active.json"
+    active_path = workspace / "_系统" / "当前能力包" / "active.json"
     active = load_json(active_path, {"status": "base_only", "active_version": None})
     package_path = active.get("package_path")
-    knowledge_active_path = workspace / "咨询转化工作区" / "_系统" / "当前机构知识" / "active.json"
+    knowledge_active_path = workspace / "_系统" / "当前机构知识" / "active.json"
     knowledge_active = load_json(knowledge_active_path, {"status": "base_only", "active_version": None})
     knowledge_path = knowledge_active.get("package_path")
-    insight_active_path = workspace / "咨询转化工作区" / "_系统" / "患者洞察" / "active.json"
+    insight_active_path = workspace / "_系统" / "患者洞察" / "active.json"
     insight_active = load_json(insight_active_path, {"status": "base_only", "active_version": None})
     insight_path = insight_active.get("package_path")
-    personal_runtime_path = workspace / "咨询转化工作区" / "_系统" / "个人成长" / "runtime-manifest.json"
+    personal_runtime_path = workspace / "_系统" / "个人成长" / "runtime-manifest.json"
     personal_runtime = load_json(personal_runtime_path, {"status": "base_only", "personal_version": None,
                                                          "team_release": None, "active_personal_rules": [],
                                                          "pending_personal_rules": []})
+    content_snapshot = (release.get("components") or {}).get("content_runtime", {}) if release else {}
+    content_package_path = content_snapshot.get("package_path")
+    content_runtime_path = content_snapshot.get("runtime_context_path")
     embedded_root = Path(__file__).resolve().parent.parent / "institution-pack"
     embedded_insight_root = Path(__file__).resolve().parent.parent / "patient-insight-pack"
     embedded_manifest = embedded_root / "manifest.json"
@@ -121,6 +144,9 @@ def main():
             "runtime_context_path": str(embedded_insight_root / "runtime-context.md"),
             "scope": insight_manifest.get("scope", {}),
         }
+    if not content_package_path and (embedded_root / "content-runtime.json").is_file():
+        content_package_path = str(embedded_root / "content-runtime.json")
+        content_runtime_path = str(embedded_root / "content-runtime.md")
     team_version = active.get("active_version") or (release_active.get("release_version") if release_active.get("status") == "active" else None)
     personal_team_release = personal_runtime.get("team_release")
     merge_status = "aligned"
@@ -147,6 +173,7 @@ def main():
         runtime_text = load_runtime(active.get("runtime_context_path"))
         knowledge_text = load_runtime(knowledge_active.get("runtime_context_path"))
         insight_text = load_runtime(insight_active.get("runtime_context_path"))
+        content_text = load_runtime(content_runtime_path)
         sys.stdout.write("# AI咨询转化飞轮运行时\n\n")
         sys.stdout.write("运行模式：{0}\n\n".format(runtime_mode))
         sys.stdout.write("基础咨询能力始终可用；机构专属事实只来自已确认运行时。\n\n")
@@ -157,6 +184,8 @@ def main():
                 sys.stdout.write("\n" + knowledge_text)
             if insight_text:
                 sys.stdout.write("\n" + insight_text)
+            if content_text:
+                sys.stdout.write("\n" + content_text)
             if personal_runtime.get("status") == "active":
                 sys.stdout.write("\n\n# 个人成长层\n\n")
                 sys.stdout.write("当前团队版本：{0}\n\n".format(personal_runtime.get("team_release") or "base_only"))
@@ -178,6 +207,7 @@ def main():
         package = load_json(expand_path(package_path), {}) if package_path else {}
         knowledge = load_json(expand_path(knowledge_path), {}) if knowledge_path else {}
         insights = load_json(expand_path(insight_path), {}) if insight_path else {}
+        content_assets = load_json(expand_path(content_package_path), {}) if content_package_path else {}
         payload = {
             "status": active.get("status", "active"),
             "runtime_mode": runtime_mode,
@@ -189,6 +219,7 @@ def main():
             "knowledge": knowledge,
             "patient_insights_active": insight_active,
             "patient_insights": insights,
+            "content_assets": content_assets,
             "personal_growth": personal_runtime,
             "merge_status": merge_status,
             "release": release_active if release_active.get("status") == "active" else {"status": "unbound"},

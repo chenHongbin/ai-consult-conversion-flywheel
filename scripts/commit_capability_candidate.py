@@ -16,6 +16,10 @@ import sys
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
+from workspace_paths import locate_workspace
+from approval_ledger import validate_approval
+from release_utils import validate_version
+from privacy_guard import scan_value
 
 
 PHONE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
@@ -65,12 +69,11 @@ def sha256(path):
 
 
 def contains_sensitive(value):
-    text = json.dumps(value, ensure_ascii=False)
-    return bool(PHONE.search(text) or ID_CARD.search(text) or EMAIL.search(text) or WECHAT.search(text))
+    return bool(scan_value(value))
 
 
 def package_root(workspace):
-    return workspace / "咨询转化工作区" / "_系统" / "当前能力包"
+    return locate_workspace(workspace) / "_系统" / "当前能力包"
 
 
 def active_path(workspace):
@@ -216,6 +219,7 @@ def main():
     parser.add_argument("workspace_root")
     parser.add_argument("candidate", help="structured candidate JSON produced by the distillation Agent")
     parser.add_argument("--publish", action="store_true", help="switch active.json to the new version")
+    parser.add_argument("--approval-id", help="independent manager approval receipt bound to this candidate")
     parser.add_argument("--version", help="explicit version such as v0.1; defaults to the next version")
     args = parser.parse_args()
 
@@ -223,19 +227,27 @@ def main():
     candidate_path = expand_path(args.candidate)
     candidate = load_json(candidate_path, None)
     errors = validate_candidate(candidate)
+    approval = None
     if args.publish:
-        promotion = (candidate or {}).get("promotion") or {}
-        if not promotion.get("evaluation_passed") or not promotion.get("coverage_gate_passed"):
-            errors.append("--publish requires evaluation_passed=true and coverage_gate_passed=true")
+        try:
+            approval = validate_approval(workspace, "capability", candidate_path, args.approval_id)
+        except ValueError as exc:
+            errors.append(str(exc))
     if errors:
         print(json.dumps({"status": "rejected", "errors": errors}, ensure_ascii=False))
         return 2
     root = package_root(workspace)
     active, base = load_active_package(workspace)
-    version = args.version or next_version(active)
+    try:
+        version = validate_version(args.version or next_version(active))
+    except ValueError as exc:
+        print(json.dumps({"status": "rejected", "errors": [str(exc)]}, ensure_ascii=False))
+        return 2
     merged = apply_delta(base, candidate)
     merged.update({"version": version, "created_at": datetime.datetime.now().isoformat(),
                    "candidate_hash": sha256(candidate_path)})
+    if approval:
+        merged["approval_id"] = approval.get("approval_id")
     version_dir = root / "versions" / version
     ensure_dir(version_dir)
     package_path = version_dir / "package.json"
@@ -258,6 +270,7 @@ def main():
             "runtime_context_path": str(runtime_path),
             "published_at": datetime.datetime.now().isoformat(),
             "source_run_id": candidate.get("source_run_id"),
+            "approval_id": approval.get("approval_id"),
             "scope": merged.get("scope", {}),
         }
         save_json(active_path(workspace), active_payload)
@@ -265,7 +278,7 @@ def main():
     else:
         active_payload = active
 
-    visible_dir = workspace / "咨询转化工作区" / "07_我的产出" / "03_销冠蒸馏能力包"
+    visible_dir = locate_workspace(workspace) / "07_我的产出" / "03_销冠蒸馏能力包"
     ensure_dir(visible_dir)
     visible_name = version + ("_机构专属咨询能力包.md" if published else "_候选机构专属咨询能力包.md")
     with io.open(str(visible_dir / visible_name), "w", encoding="utf-8") as handle:

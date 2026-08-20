@@ -1,12 +1,33 @@
 {
   "schema_version": "1.0-base-runtime",
   "runtime_name": "AI咨询转化飞轮基础咨询运行时",
-  "runtime_version": "v2.0",
+  "runtime_version": "v2.2.1",
+  "core_version": "2.2.1",
+  "workspace_schema_version": "v2.1.3",
+  "distribution_model": "one_public_core_with_private_local_workspaces",
   "always_available": true,
   "requires_distillation": false,
   "scope": "generic_consultation_conversion",
   "method": "consultation_eight_step",
   "layers": [
+    {
+      "id": "public_core_boundary",
+      "label": "公共 Core 与本地工作区隔离",
+      "status": "always_on",
+      "references": ["references/open-source-runtime.md"],
+      "tools": ["scripts/doctor.py"],
+      "telemetry": "disabled_by_default"
+    },
+    {
+      "id": "onboarding",
+      "label": "首次设置与初始化采访",
+      "status": "available_until_ready",
+      "references": [
+        "references/v2.1.1-onboarding-runtime.md",
+        "references/workspace-initialization-contract.md"
+      ],
+      "tools": ["scripts/onboarding.py", "scripts/init_consult_workspace.py", "scripts/verify_consult_workspace.py"]
+    },
     {
       "id": "base_method",
       "label": "基础咨询转化方法",
@@ -30,11 +51,34 @@
       "references": ["references/practice-coach.md"]
     },
     {
+      "id": "daily_review",
+      "label": "每日全量咨询复盘",
+      "status": "manager_workspace_required",
+      "references": [
+        "references/v2.1-daily-review-runtime.md",
+        "references/v2.1-case-report-contract.md",
+        "references/v2.1-data-contract.md"
+      ],
+      "tools": ["scripts/run_nightly_cycle.py", "scripts/daily_review.py"]
+    },
+    {
       "id": "manager_workbench",
       "label": "咨询主管每日经营与能力复制",
       "status": "manager_workspace_required",
       "references": ["references/manager-workbench.md", "references/team-management.md"],
       "tools": ["scripts/generate_management_dashboard.py", "scripts/record_management_action.py", "scripts/promote_team_capability.py"]
+    },
+    {
+      "id": "content_action",
+      "label": "咨询内容行动层",
+      "status": "always_on",
+      "references": [
+        "references/content-action-runtime.md",
+        "references/content-knowledge-mapping.json",
+        "references/consultation-eight-step-method.md",
+        "references/safety-and-sanitization.md"
+      ],
+      "tools": ["scripts/content_asset.py", "scripts/content_feedback.py", "scripts/content_runtime.py", "scripts/map_content_knowledge.py"]
     },
     {
       "id": "visual_content",
@@ -47,6 +91,17 @@
         "references/visual-decision-matrix.json"
       ],
       "tools": ["scripts/select_visual_asset.py", "scripts/record_visual_feedback.py"]
+    },
+    {
+      "id": "product_feedback",
+      "label": "本地脱敏产品反馈",
+      "status": "always_on",
+      "references": [
+        "references/distribution-and-feedback.md",
+        "references/safety-and-sanitization.md"
+      ],
+      "tools": ["scripts/product_feedback.py"],
+      "auto_upload": false
     }
   ],
   "institution_facts_available": false,
@@ -60,5 +115,5 @@
     "不能说的话"
   ],
   "missing_context_rule": "没有已确认机构知识时，不得编造医生、价格、地址、项目、疗效、周期或活动；明确标记机构事实待确认。",
-  "upgrade_path": "完成机构初始化和蒸馏后，在基础运行时之上叠加团队运行时；一线再叠加个人成长层。"
+  "upgrade_path": "更新公共 Core 时保留机构工作区；完成机构初始化和审核后，在基础运行时之上叠加机构运行时，一线再叠加个人成长层。"
 }

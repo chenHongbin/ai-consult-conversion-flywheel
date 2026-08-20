@@ -14,8 +14,10 @@ from management_data import (
     aggregate_metrics, dedupe_samples, in_period, latest_by, load_json,
     load_jsonl, locate_workspace, management_root, now_iso, period_bounds,
     read_team_data, save_json, task_state,
+    team_breakpoint,
 )
 from compat import ensure_dir
+from daily_review import queue_status as review_queue_status
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,6 +42,11 @@ def load_capability_version(root):
 
 
 def load_queue_status(root, date_value):
+    review = review_queue_status(root, date_value)
+    if review.get("total"):
+        failed = review.get("status_counts", {}).get("failed", 0)
+        failed += review.get("status_counts", {}).get("quarantined", 0)
+        return review.get("pending", 0) + review.get("retryable_failed", 0), failed
     auto = root / "_系统" / "团队自动化"
     queues = sorted((auto / "01_待处理队列").glob("夜间任务-*.jsonl")) if (auto / "01_待处理队列").is_dir() else []
     pending = 0
@@ -53,23 +60,7 @@ def load_queue_status(root, date_value):
 
 
 def choose_breakpoint(samples):
-    counts = Counter()
-    employees = defaultdict(set)
-    refs = defaultdict(list)
-    for sample in samples:
-        label = sample.get("breakpoint")
-        if not label or label in ("unknown", "missing"):
-            continue
-        counts[label] += 1
-        if sample.get("employee_id"):
-            employees[label].add(sample.get("employee_id"))
-        refs[label].append(sample.get("sample_id") or sample.get("source_hash"))
-    if not counts:
-        return None
-    ranked = sorted(counts, key=lambda label: (-len(employees[label]), -counts[label], label))
-    label = ranked[0]
-    return {"label": label, "sample_count": counts[label], "employee_count": len(employees[label]),
-            "employee_ids": sorted(employees[label]), "refs": [item for item in refs[label] if item]}
+    return team_breakpoint(samples)
 
 
 def outcome_label(samples):
@@ -212,35 +203,52 @@ def build_period(root, store, profile, period, date_value):
     outcomes["note"] = ("数据完整，可以观察经营结果。" if outcomes["metrics"]["appointment_arrival_rate"]["status"] == "known"
                         else "缺少预约或到院结果，暂时只能观察行为和过程变化。")
     breakpoint = choose_breakpoint(samples)
-    if not tasks and breakpoint:
+    stable_breakpoint = breakpoint if breakpoint and breakpoint.get("status") == "stable" else None
+    daily_projection = load_json(root / "_系统" / "每日复盘" / "projections" / (date_value + "-team-day.json"), {}) or {}
+    patient_priorities = daily_projection.get("patient_priorities") or [] if period == "today" else []
+    patient_tasks = [{
+        "task_id": "PATIENT-" + str(item.get("patient_case_id")),
+        "priority": item.get("priority") or "P2",
+        "type": "patient_priority",
+        "target": item.get("employee_id"),
+        "status": "pending_manager_judgment",
+        "reason": item.get("reason"),
+        "action": "{0}：{1}".format(item.get("employee_name") or "咨询师", item.get("next_action") or "主管判断下一步"),
+        "source_refs": item.get("evidence") or [],
+        "command": "打开患者案例 {0}，复核证据并决定下一步".format(item.get("patient_case_id")),
+        "report_path": item.get("report_path"),
+    } for item in patient_priorities]
+    tasks = patient_tasks + tasks
+    if not tasks and stable_breakpoint:
         tasks = [{"task_id": "AUTO-{0}-{1}".format(date_value.replace("-", ""), period.upper()),
                   "priority": "P1", "type": "training", "target": "team", "status": "recommended",
-                  "reason": "{0}名员工的{1}条样本出现同一断点".format(breakpoint["employee_count"], breakpoint["sample_count"]),
-                  "action": "围绕“{0}”建立一个单动作训练".format(breakpoint["label"]),
-                  "source_refs": breakpoint["refs"],
-                  "command": "基于团队断点“{0}”生成晨会训练".format(breakpoint["label"])}]
+                  "reason": "{0}名员工的{1}个患者案例出现同一断点".format(stable_breakpoint["employee_count"], stable_breakpoint["sample_count"]),
+                  "action": "围绕“{0}”建立一个单动作训练".format(stable_breakpoint["label"]),
+                  "source_refs": stable_breakpoint["refs"],
+                  "command": "基于团队断点“{0}”生成晨会训练".format(stable_breakpoint["label"])}]
     summary = {
-        "main_breakpoint": breakpoint.get("label") if breakpoint else "尚无足够样本识别团队断点",
-        "sample_count": breakpoint.get("sample_count", 0) if breakpoint else 0,
-        "affected_employee_count": breakpoint.get("employee_count", 0) if breakpoint else 0,
+        "main_breakpoint": stable_breakpoint.get("label") if stable_breakpoint else "尚未达到跨2人、3个患者案例的团队断点门槛",
+        "breakpoint_observation": breakpoint.get("label") if breakpoint and not stable_breakpoint else None,
+        "sample_count": stable_breakpoint.get("sample_count", 0) if stable_breakpoint else 0,
+        "affected_employee_count": stable_breakpoint.get("employee_count", 0) if stable_breakpoint else 0,
         "today_action": (training.get("key_action") if training else
-                         ("围绕“{0}”建立一个可观察的单动作训练".format(breakpoint.get("label")) if breakpoint else
+                         ("围绕“{0}”建立一个可观察的单动作训练".format(stable_breakpoint.get("label")) if stable_breakpoint else
                           "先放入一通录音或一段微信，系统会从第一个片段开始")),
         "review_standard": training.get("pass_criteria") or "每名员工提交一条新样本，检查目标动作是否出现",
     }
     completeness, missing_count = compute_data_completeness(samples, outcomes)
     pending, failed = load_queue_status(root, date_value)
     evidence = []
-    if breakpoint:
+    if stable_breakpoint:
         sample_by_id = dict((row.get("sample_id"), row) for row in samples if row.get("sample_id"))
         links = []
         refs = []
-        for ref in breakpoint["refs"]:
+        for ref in stable_breakpoint["refs"]:
             sample = sample_by_id.get(ref, {})
             refs.extend(sample.get("evidence_refs") or [ref])
             if sample.get("source"):
                 links.append(sample.get("source"))
-        evidence.append({"label": "主要断点：" + breakpoint["label"], "refs": refs,
+        evidence.append({"label": "主要断点：" + stable_breakpoint["label"], "refs": refs,
                          "links": sorted(set(links))})
     employees = build_employees(samples, active_trainings, profile, team_rows)
     return {
@@ -248,7 +256,7 @@ def build_period(root, store, profile, period, date_value):
         "tasks": tasks, "training": training, "employees": employees,
         "outcomes": outcomes, "management_metrics": management_metrics(period_events, period_trainings, employees),
         "capability_counts": capability_counts(load_jsonl(store / CAPABILITY_FILE)),
-        "evidence": evidence, "data_status": {
+        "evidence": evidence, "patient_priorities": patient_priorities, "data_status": {
             "sample_count": len(samples), "pending_analysis_count": pending, "failed_item_count": failed,
             "data_completeness": completeness, "missing_count": missing_count,
             "capability_version": load_capability_version(root),

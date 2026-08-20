@@ -1,0 +1,62 @@
+{
+  "schema_version": "2.1.2-content-knowledge-mapping",
+  "rule": "目录匹配只建立来源索引，不移动、不改名，也不代表内容已审核。",
+  "categories": [
+    {
+      "id": "institution_trust",
+      "label": "机构基础与信任背书",
+      "aliases": ["机构基础与信任背书库", "机构信任背书", "机构资质", "医院介绍", "机构介绍"],
+      "canonical_target": "01_机构介绍",
+      "knowledge_object": "institution_facts"
+    },
+    {
+      "id": "project_disease",
+      "label": "项目与病种知识",
+      "aliases": ["项目病种知识库", "项目/病种知识库", "项目与病种", "科室项目与服务", "病种知识"],
+      "canonical_target": "02_科室项目与服务",
+      "knowledge_object": "institution_facts"
+    },
+    {
+      "id": "customer_objections",
+      "label": "客户问题与异议",
+      "aliases": ["客户问题与异议库", "客户异议", "患者问题", "常见顾虑", "聊死记录"],
+      "canonical_target": "05_普通失败与未预约案例",
+      "knowledge_object": "patient_insights_and_cases"
+    },
+    {
+      "id": "consultation_method",
+      "label": "咨询转化方法论",
+      "aliases": ["咨询转化方法论库", "咨询方法论", "咨询流程与标准", "八步法", "咨询SOP"],
+      "canonical_target": "03_咨询流程与标准",
+      "knowledge_object": "team_capability"
+    },
+    {
+      "id": "benchmark_cases",
+      "label": "标杆与黑榜案例",
+      "aliases": ["标杆黑榜案例库", "标杆/黑榜案例库", "标杆案例", "黑榜案例", "优秀咨询案例"],
+      "canonical_target": "04_优秀咨询案例 + 05_普通失败与未预约案例",
+      "knowledge_object": "team_capability_candidates"
+    },
+    {
+      "id": "champion_language",
+      "label": "销冠语料",
+      "aliases": ["销冠语料库", "销冠话术", "销冠录音", "优秀话术"],
+      "canonical_target": "04_优秀咨询案例",
+      "knowledge_object": "team_capability_candidates"
+    },
+    {
+      "id": "compliance_boundary",
+      "label": "合规与边界",
+      "aliases": ["合规与边界库", "合规边界", "敏感词", "医疗广告法", "平台规则"],
+      "canonical_target": "03_咨询流程与标准",
+      "knowledge_object": "safety_and_institution_rules"
+    },
+    {
+      "id": "private_content",
+      "label": "朋友圈与私域内容",
+      "aliases": ["朋友圈私域内容库", "朋友圈内容", "私域内容", "历史朋友圈", "内容模板"],
+      "canonical_target": "07_我的产出/07_内容行动工作台",
+      "knowledge_object": "content_asset_candidates"
+    }
+  ]
+}

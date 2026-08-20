@@ -6,9 +6,17 @@ import csv
 import datetime
 import io
 import json
+import os
+from collections import defaultdict
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
+from workspace_paths import locate_workspace
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 
 
 WORKSPACE_NAME = "咨询转化工作区"
@@ -38,16 +46,6 @@ ALIASES = {
 
 def now_iso():
     return datetime.datetime.now().replace(microsecond=0).isoformat()
-
-
-def locate_workspace(selected):
-    selected = expand_path(selected)
-    if (selected / "_系统").is_dir() and (selected / "08_团队管理").is_dir():
-        return selected
-    child = selected / WORKSPACE_NAME
-    if (child / "_系统").is_dir() and (child / "08_团队管理").is_dir():
-        return child
-    raise ValueError("未找到标准咨询转化工作区：{0}".format(selected))
 
 
 def management_root(workspace):
@@ -103,7 +101,13 @@ def append_jsonl(path, row):
     path = Path(path)
     ensure_dir(path.parent)
     with io.open(str(path), "a", encoding="utf-8") as handle:
+        if fcntl:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         handle.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+        if fcntl:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def latest_by(rows, id_field, updated_field="updated_at"):
@@ -120,6 +124,40 @@ def latest_by(rows, id_field, updated_field="updated_at"):
         if previous is None or stamp >= previous_stamp:
             latest[key] = row
     return latest
+
+
+def team_breakpoint(rows, min_employees=2, min_cases=3):
+    """One shared evidence rule for every team-level projection."""
+    employees = defaultdict(set)
+    cases = defaultdict(set)
+    refs = defaultdict(list)
+    for row in rows:
+        label = row.get("breakpoint")
+        if not label or label in ("unknown", "missing", "未知"):
+            continue
+        employee_id = row.get("employee_id")
+        case_id = row.get("patient_case_id") or row.get("sample_id") or row.get("conversation_id") or row.get("source_hash")
+        if employee_id:
+            employees[label].add(employee_id)
+        if case_id:
+            cases[label].add(case_id)
+        reference = row.get("sample_id") or row.get("conversation_id") or row.get("source_hash")
+        if reference:
+            refs[label].append(reference)
+    if not cases:
+        return None
+    ranked = sorted(cases, key=lambda label: (-len(employees[label]), -len(cases[label]), label))
+    label = ranked[0]
+    stable = len(employees[label]) >= min_employees and len(cases[label]) >= min_cases
+    return {
+        "label": label,
+        "sample_count": len(cases[label]),
+        "employee_count": len(employees[label]),
+        "employee_ids": sorted(employees[label]),
+        "refs": sorted(set(refs[label])),
+        "status": "stable" if stable else "observation",
+        "threshold": {"min_employees": min_employees, "min_patient_cases": min_cases},
+    }
 
 
 def dedupe_samples(rows):

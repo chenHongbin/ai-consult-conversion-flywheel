@@ -16,6 +16,10 @@ import re
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
+from workspace_paths import locate_workspace
+from approval_ledger import validate_approval
+from release_utils import validate_version
+from privacy_guard import scan_value
 
 
 PHONE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
@@ -56,7 +60,7 @@ def sha256(path):
 
 def contains_sensitive(value):
     text = json.dumps(value, ensure_ascii=False)
-    return bool(PHONE.search(text) or ID_CARD.search(text) or EMAIL.search(text) or WECHAT.search(text) or URL.search(text))
+    return bool(scan_value(value) or URL.search(text))
 
 
 def has_any(value, terms):
@@ -64,7 +68,7 @@ def has_any(value, terms):
 
 
 def insight_root(workspace):
-    return workspace / "咨询转化工作区" / "_系统" / "患者洞察"
+    return locate_workspace(workspace) / "_系统" / "患者洞察"
 
 
 def active_path(workspace):
@@ -144,16 +148,6 @@ def validate_candidate(candidate, publish=False):
             errors.extend(validate_item(kind, item))
             if publish and isinstance(item, dict) and item.get("review_status") not in ("approved", "active", "confirmed"):
                 errors.append("--publish requires {0} {1} review_status=approved/active/confirmed".format(kind, item_key(item)))
-    if publish:
-        promotion = candidate.get("promotion") or {}
-        for flag in ("evaluation_passed", "coverage_gate_passed", "manager_reviewed", "privacy_reviewed"):
-            if promotion.get(flag) is not True:
-                errors.append("--publish requires promotion.{0}=true".format(flag))
-        # Clinical scenarios are allowed only when the candidate explicitly
-        # records a clinical review; otherwise they remain pending.
-        if any(item.get("clinical_boundary") not in (None, "non_clinical") for item in (delta.get("decision_states_upsert") or [])):
-            if (candidate.get("promotion") or {}).get("clinical_reviewed") is not True:
-                errors.append("clinical-boundary insight requires clinical_reviewed=true")
     return errors
 
 
@@ -203,19 +197,30 @@ def main():
     parser.add_argument("workspace_root")
     parser.add_argument("candidate")
     parser.add_argument("--publish", action="store_true")
+    parser.add_argument("--approval-id", help="independent manager approval receipt bound to this candidate")
     parser.add_argument("--version")
     args = parser.parse_args()
     workspace = expand_path(args.workspace_root)
     candidate_path = expand_path(args.candidate)
     candidate = load_json(candidate_path, None)
     errors = validate_candidate(candidate, publish=args.publish)
+    approval = None
+    if args.publish:
+        try:
+            approval = validate_approval(workspace, "patient_insight", candidate_path, args.approval_id)
+        except ValueError as exc:
+            errors.append(str(exc))
     if errors:
         print(json.dumps({"status": "rejected", "errors": errors}, ensure_ascii=False))
         return 2
     root = insight_root(workspace)
     ensure_dir(root / "versions")
     active, base = load_active(workspace)
-    version = args.version or next_version(active)
+    try:
+        version = validate_version(args.version or next_version(active))
+    except ValueError as exc:
+        print(json.dumps({"status": "rejected", "errors": [str(exc)]}, ensure_ascii=False))
+        return 2
     delta = candidate.get("delta") or {}
     merged = {
         "schema_version": "1.0-patient-insight",
@@ -227,6 +232,7 @@ def main():
         "decision_states": merge_items(base.get("decision_states", []), delta.get("decision_states_upsert", [])),
         "doubt_intents": merge_items(base.get("doubt_intents", []), delta.get("doubt_intents_upsert", [])),
         "practice_scenarios": merge_items(base.get("practice_scenarios", []), delta.get("practice_scenarios_upsert", [])),
+        "approval_id": approval.get("approval_id") if approval else None,
     }
     version_dir = root / "versions" / version
     ensure_dir(version_dir)
@@ -248,12 +254,13 @@ def main():
             "runtime_context_path": str(runtime_path),
             "published_at": datetime.datetime.now().isoformat(),
             "source_run_id": candidate.get("source_run_id"),
+            "approval_id": approval.get("approval_id"),
             "scope": merged.get("scope", {}),
             "approved_state_count": sum(1 for item in merged["decision_states"] if item.get("review_status") in ("approved", "active", "confirmed")),
             "approved_intent_count": sum(1 for item in merged["doubt_intents"] if item.get("review_status") in ("approved", "active", "confirmed")),
         })
         published = True
-    visible = workspace / "咨询转化工作区" / "07_我的产出" / "05_患者决策洞察与陪练"
+    visible = locate_workspace(workspace) / "07_我的产出" / "05_患者决策洞察与陪练"
     ensure_dir(visible)
     name = version + ("_患者决策洞察与陪练.md" if published else "_患者决策洞察候选.md")
     with io.open(str(visible / name), "w", encoding="utf-8") as handle:

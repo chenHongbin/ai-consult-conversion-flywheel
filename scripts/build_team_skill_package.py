@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Build a distributable team Skill containing only the approved capability pack.
+"""Optionally export an offline frontline bundle with an approved local runtime.
 
-The public/base Skill remains unchanged. This command copies the base package
-to a temporary staging directory and adds a redacted institution-pack folder.
-Raw recordings, patient chats and manager-only workspace files are never copied.
+The normal product path is one public Core plus a private local workspace. This
+compatibility command is only for frontline devices that cannot load the same
+workspace. Raw recordings, patient chats and manager-only files are never copied.
 """
 
 import argparse
@@ -21,7 +21,10 @@ import zipfile
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
-from release_utils import component_snapshot, load_release_active, load_release_file
+from release_utils import component_snapshot, load_release_active, load_release_file, sha256 as release_sha256, validate_version
+from workspace_paths import assert_within, locate_workspace
+from privacy_guard import scan_value
+from project_version import core_version, core_version_tag
 
 
 PHONE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
@@ -52,7 +55,14 @@ FRONTLINE_SCRIPTS = {
     "route_consultation.py",
     "select_visual_asset.py",
     "record_visual_feedback.py",
+    "content_feedback.py",
+    "map_content_knowledge.py",
     "verify_consult_workspace.py",
+    "privacy_guard.py",
+    "project_version.py",
+    "product_feedback.py",
+    "medical_safety.py",
+    "workspace_paths.py",
 }
 
 FRONTLINE_REFERENCES = {
@@ -62,9 +72,12 @@ FRONTLINE_REFERENCES = {
     "consultation-base.md",
     "consultation-eight-step-method.md",
     "consultation-visual-content-loop.md",
+    "content-action-runtime.md",
+    "content-knowledge-mapping.json",
+    "distribution-and-feedback.md",
     "knowledge-model.md",
-    "lai-methodology.md",
     "naming.md",
+    "open-source-runtime.md",
     "patient-decision-insights.md",
     "perspective-lenses.md",
     "practice-coach.md",
@@ -77,6 +90,7 @@ FRONTLINE_REFERENCES = {
     "workspace-initialization-contract.md",
     "workspace-onboarding.md",
     "frontline-runtime.md",
+    "v2.1-case-report-contract.md",
 }
 
 FRONTLINE_RUNTIME_FILES = {"base-runtime.json"}
@@ -103,7 +117,7 @@ def sha256(path):
 
 
 def sensitive(text):
-    return bool(PHONE.search(text) or ID_CARD.search(text) or EMAIL.search(text) or WECHAT.search(text))
+    return bool(scan_value(text))
 
 
 def safe_name(value):
@@ -158,7 +172,7 @@ def should_copy_frontline(relative):
         return False
     if parts[0] in ("agents", "skills"):
         return True
-    if relative.as_posix() in ("SKILL.md", "LICENSE"):
+    if relative.as_posix() in ("VERSION", "SKILL.md", "LICENSE"):
         return True
     if parts[0] == "scripts":
         return len(parts) == 2 and parts[1] in FRONTLINE_SCRIPTS
@@ -175,8 +189,8 @@ def write_frontline_agent_metadata(staging):
     ensure_dir(path.parent)
     text = '''interface:
   display_name: "AI咨询转化飞轮"
-  short_description: "分析咨询、学习销冠、陪练和持续提升个人转化能力"
-  default_prompt: "使用 AI咨询转化飞轮分析我的电话、微信或私信；需要时先做 YouNavi 转录、长图切片 OCR 和去重。优先使用团队已发布能力，并把我的有效经验沉淀到个人成长层。不要执行团队蒸馏、候选发布、版本回滚或读取其他员工资料。"
+  short_description: "分析咨询、生成下一步内容、学习销冠并持续提升个人转化能力"
+  default_prompt: "使用 AI咨询转化飞轮分析我的电话、微信或私信，并按患者当前阶段生成跟进、朋友圈、科普或私信内容；需要时先做 YouNavi 转录、长图切片 OCR 和去重。优先使用团队已发布能力，并把我的使用反馈沉淀到个人层。不要执行团队蒸馏、内容资产批准、候选发布、版本回滚或读取其他员工资料。"
 
 policy:
   allow_implicit_invocation: true
@@ -185,37 +199,75 @@ policy:
         handle.write(text)
 
 
+def write_frontline_skill(staging):
+    """Replace the public manager router with a self-contained frontline entry."""
+    path = Path(staging) / "SKILL.md"
+    text = '''---
+name: medical-consult-conversion-coach
+description: 医疗咨询一线离线运行入口。分析本人获准处理的电话、微信、私信或截图，生成安全回复、回访、内容和单动作陪练；加载包内已审核机构运行时，不处理主管发布、团队数据或其他员工资料。
+---
+
+# AI咨询转化飞轮（一线离线运行包）
+
+这是公共 Core 的可选离线运行快照，只供无法共享机构工作区的一线设备使用。公共 Core 与机构运行时版本相互独立，边界见 [open-source-runtime.md](references/open-source-runtime.md)。
+
+只处理当前用户获准访问的个人材料：分析这一条、帮我回复、安排回访、生成下一步内容、陪我练一遍。分析读取 [consultation-eight-step-method.md](references/consultation-eight-step-method.md)、[analysis-and-coaching.md](references/analysis-and-coaching.md) 和 [safety-and-sanitization.md](references/safety-and-sanitization.md)；内容读取 [consultant-front-door.md](references/consultant-front-door.md) 与 [content-action-runtime.md](references/content-action-runtime.md)；陪练读取 [practice-coach.md](references/practice-coach.md)。
+
+优先加载包内已审核机构能力，再叠加当前用户本地个人成长层。不得执行团队蒸馏、候选写回、内容审核、机构发布、回滚、主管报表或读取其他员工资料。没有确认的医生、价格、地址、项目、疗效、周期或活动时明确标记待确认；不自动发送或发布内容，不做临床诊断和疗效保证。
+'''
+    with io.open(str(path), "w", encoding="utf-8") as handle:
+        handle.write(text)
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Build a weekly institution/team Skill package.")
+    parser = argparse.ArgumentParser(description="Export an optional offline frontline runtime bundle.")
     parser.add_argument("workspace_root")
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--institution", default="当前机构")
-    parser.add_argument("--department", default="当前科室")
+    parser.add_argument("--institution", default="")
+    parser.add_argument("--department", default="")
     parser.add_argument("--channel", default="通用")
     parser.add_argument("--version", help="defaults to the active capability version")
     args = parser.parse_args()
 
-    workspace = expand_path(args.workspace_root)
+    workspace = locate_workspace(args.workspace_root)
     source_root = Path(__file__).resolve().parents[1]
     release_active = load_release_active(workspace)
     if release_active.get("status") != "active" or not release_active.get("release_version"):
         print(json.dumps({"status": "rejected", "reason": "unified_release_missing"}, ensure_ascii=False))
         return 2
     release = load_release_file(workspace, release_active.get("release_version"))
-    if not release or release.get("release_id") != release_active.get("release_id"):
+    if (not release or release.get("release_id") != release_active.get("release_id")
+            or release_sha256(release_active.get("release_path")) != release_active.get("release_hash")):
         print(json.dumps({"status": "rejected", "reason": "unified_release_invalid"}, ensure_ascii=False))
         return 2
     try:
         for component in ("capability", "knowledge", "patient_insight"):
             current_snapshot = component_snapshot(workspace, component)
             release_snapshot = (release.get("components") or {}).get(component, {})
-            if current_snapshot.get("version") != release_snapshot.get("version") or current_snapshot.get("status") != release_snapshot.get("status"):
+            if (current_snapshot.get("version") != release_snapshot.get("version")
+                    or current_snapshot.get("status") != release_snapshot.get("status")
+                    or current_snapshot.get("package_hash") != release_snapshot.get("package_hash")
+                    or current_snapshot.get("runtime_hash") != release_snapshot.get("runtime_hash")):
                 print(json.dumps({"status": "rejected", "reason": "component_not_bound_to_release", "component": component}, ensure_ascii=False))
                 return 2
     except ValueError as exc:
         print(json.dumps({"status": "rejected", "reason": str(exc)}, ensure_ascii=False))
         return 2
-    package_root = workspace / "咨询转化工作区" / "_系统" / "当前能力包"
+    content_snapshot = (release.get("components") or {}).get("content_runtime", {})
+    try:
+        content_path = assert_within(content_snapshot.get("package_path"), workspace, "content_runtime_package")
+        content_runtime_path = assert_within(content_snapshot.get("runtime_context_path"), workspace, "content_runtime_context")
+    except ValueError as exc:
+        print(json.dumps({"status": "rejected", "reason": str(exc)}, ensure_ascii=False))
+        return 2
+    if (release_sha256(content_path) != content_snapshot.get("package_hash")
+            or release_sha256(content_runtime_path) != content_snapshot.get("runtime_hash")):
+        print(json.dumps({"status": "rejected", "reason": "component_not_bound_to_release", "component": "content_runtime"}, ensure_ascii=False))
+        return 2
+    content_runtime = load_json(content_path)
+    with io.open(str(content_runtime_path), "r", encoding="utf-8") as handle:
+        content_runtime_text = handle.read()
+    package_root = workspace / "_系统" / "当前能力包"
     active_path = package_root / "active.json"
     if not active_path.is_file():
         print(json.dumps({"status": "rejected", "reason": "active_capability_missing"}, ensure_ascii=False))
@@ -237,7 +289,7 @@ def main():
         print(json.dumps({"status": "rejected", "reason": "capability_contains_possible_personal_identifier"}, ensure_ascii=False))
         return 2
 
-    knowledge_active_path = workspace / "咨询转化工作区" / "_系统" / "当前机构知识" / "active.json"
+    knowledge_active_path = workspace / "_系统" / "当前机构知识" / "active.json"
     knowledge_active = load_json(knowledge_active_path) if knowledge_active_path.is_file() else {}
     knowledge_path = expand_path(knowledge_active.get("package_path", "")) if knowledge_active.get("package_path") else None
     knowledge_runtime_path = expand_path(knowledge_active.get("runtime_context_path", "")) if knowledge_active.get("runtime_context_path") else None
@@ -253,7 +305,7 @@ def main():
         print(json.dumps({"status": "rejected", "reason": "knowledge_contains_possible_personal_identifier"}, ensure_ascii=False))
         return 2
 
-    insight_active_path = workspace / "咨询转化工作区" / "_系统" / "患者洞察" / "active.json"
+    insight_active_path = workspace / "_系统" / "患者洞察" / "active.json"
     insight_active = load_json(insight_active_path) if insight_active_path.is_file() else {}
     insight_path = expand_path(insight_active.get("package_path", "")) if insight_active.get("package_path") else None
     insight_runtime_path = expand_path(insight_active.get("runtime_context_path", "")) if insight_active.get("runtime_context_path") else None
@@ -267,16 +319,27 @@ def main():
         print(json.dumps({"status": "rejected", "reason": "patient_insight_contains_possible_personal_identifier"}, ensure_ascii=False))
         return 2
 
-    version = args.version or active.get("active_version")
+    try:
+        version = validate_version(args.version or active.get("active_version"))
+    except ValueError as exc:
+        print(json.dumps({"status": "rejected", "reason": str(exc)}, ensure_ascii=False))
+        return 2
     institution = args.institution or capability.get("scope", {}).get("institution", "当前机构")
     department = args.department or capability.get("scope", {}).get("department", "当前科室")
-    filename = "AI咨询转化飞轮_{0}_{1}_{2}.skill".format(safe_name(institution), safe_name(department), safe_name(version))
+    release_scope = release.get("scope") or {}
+    if ((release_scope.get("institution") and institution != release_scope.get("institution"))
+            or (release_scope.get("department") and department != release_scope.get("department"))):
+        print(json.dumps({"status": "rejected", "reason": "package_scope_must_match_release"}, ensure_ascii=False))
+        return 2
+    filename = "AI咨询转化飞轮_离线团队运行包_{0}_{1}_{2}.skill".format(
+        safe_name(institution), safe_name(department), safe_name(version))
     output_dir = expand_path(args.output_dir)
     ensure_dir(output_dir)
     output = output_dir / filename
     staging = Path(tempfile.mkdtemp(prefix="ai-flywheel-team-package-"))
     try:
         copy_base(source_root, staging)
+        write_frontline_skill(staging)
         write_frontline_agent_metadata(staging)
         pack_dir = staging / "institution-pack"
         ensure_dir(pack_dir)
@@ -286,15 +349,20 @@ def main():
         save_json(pack_dir / "knowledge.json", knowledge)
         with io.open(str(pack_dir / "knowledge-runtime.md"), "w", encoding="utf-8") as handle:
             handle.write(knowledge_runtime_text)
+        save_json(pack_dir / "content-runtime.json", content_runtime)
+        with io.open(str(pack_dir / "content-runtime.md"), "w", encoding="utf-8") as handle:
+            handle.write(content_runtime_text)
         manifest = {
-            "package_type": "team_runtime_skill",
+            "package_type": "offline_team_runtime_bundle",
             "base_skill_name": "AI咨询转化飞轮",
-            "base_skill_version": "v2.0-frontline",
+            "base_skill_version": core_version_tag(),
+            "base_core_version": core_version(),
+            "distribution_model": "optional_offline_export",
             "runtime_role": "frontline",
             "frontline_capabilities": [
                 "scan_personal_materials", "transcribe_audio", "ocr_long_images",
                 "analyse_personal_consultations", "learn_from_team_examples",
-                "personal_growth_overlay", "practice_coaching", "feedback_capture",
+                "personal_growth_overlay", "practice_coaching", "content_action", "feedback_capture",
             ],
             "manager_capabilities_excluded": [
                 "team_distillation", "candidate_commit", "release_publish",
@@ -314,11 +382,15 @@ def main():
             "patient_insight_version": insight.get("version"),
             "patient_insight_hash": "",
             "patient_insight_runtime_hash": "",
+            "content_runtime_version": content_runtime.get("version"),
+            "content_runtime_hash": sha256(pack_dir / "content-runtime.json"),
+            "content_runtime_context_hash": sha256(pack_dir / "content-runtime.md"),
+            "approved_content_asset_count": content_runtime.get("asset_count", 0),
             "contains_patient_level_profiles": False,
             "contains_unreviewed_knowledge": False,
             "contains_raw_patient_material": False,
             "contains_manager_workspace": False,
-            "update_rule": "install this package to update the team's institution capability",
+            "update_rule": "公共 Core 独立升级；仅在无法共享机构工作区时重新导出本地运行时快照",
         }
         insight_dir = staging / "patient-insight-pack"
         ensure_dir(insight_dir)
@@ -339,14 +411,15 @@ def main():
         manifest["patient_insight_hash"] = sha256(insight_dir / "package.json")
         manifest["patient_insight_runtime_hash"] = sha256(insight_dir / "runtime-context.md")
         manifest["package_fingerprint"] = "package-" + hashlib.sha256((
-            manifest["capability_hash"] + manifest["knowledge_hash"] + manifest["patient_insight_hash"]
+            manifest["capability_hash"] + manifest["knowledge_hash"] + manifest["patient_insight_hash"] + manifest["content_runtime_hash"]
         ).encode("utf-8")).hexdigest()[:16]
         save_json(pack_dir / "manifest.json", manifest)
         save_json(pack_dir / "release.json", release)
         with io.open(str(pack_dir / "团队更新说明.md"), "w", encoding="utf-8") as handle:
-            handle.write("# 团队 Skill 更新说明\n\n")
-            handle.write("这是 {0} / {1} 的咨询转化能力包 {2}。\n\n".format(institution, department, version))
-            handle.write("安装或更新这个 Skill 后，日常咨询分析、顾虑处理、流失诊断和新人陪练会优先使用本机构能力。\n")
+            handle.write("# 离线团队运行包说明\n\n")
+            handle.write("这是 {0} / {1} 的本地咨询运行时快照 {2}。\n\n".format(institution, department, version))
+            handle.write("普通情况下请安装官方公共 Core 并读取机构工作区；只有设备无法共享工作区时才使用本导出包。\n")
+            handle.write("公共 Core 升级与本机构运行时升级相互独立。\n")
             handle.write("本包不包含原始患者录音、微信聊天、姓名、电话、病历或主管私有工作区。\n")
             handle.write("患者洞察仅包含经过审核的群体决策状态和合成陪练索引，不包含患者个人画像。\n")
         if output.exists():
@@ -358,7 +431,7 @@ def main():
     finally:
         shutil.rmtree(str(staging), ignore_errors=True)
 
-    release_dir = workspace / "咨询转化工作区" / "_系统" / "团队发布包" / str(version)
+    release_dir = workspace / "_系统" / "团队发布包" / str(version)
     ensure_dir(release_dir)
     shutil.copy2(str(output), str(release_dir / filename))
     save_json(release_dir / "release-manifest.json", manifest)

@@ -1,10 +1,13 @@
 scripts/__pycache__/
 .playwright-cli/
 output/
+dist/
 *.pyc
 .DS_Store
 咨询转化工作区/
 AI咨询转化飞轮_v*.skill
+AI咨询转化飞轮_离线团队运行包_*.skill
+*.skill.sha256
 民营医疗咨询转化Skill_v*.zip
 *.mp3
 *.m4a
@@ -22,3 +25,6 @@ AI咨询转化飞轮_v*.skill
 *.csv
 *.jsonl
 !references/test-set/*.jsonl
+.env
+.env.*
+!.env.example

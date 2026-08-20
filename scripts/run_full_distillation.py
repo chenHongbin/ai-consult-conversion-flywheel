@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
+from workspace_paths import locate_workspace
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -29,6 +30,21 @@ def run(command):
 def read_json(path):
     with io.open(str(path), "r", encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def read_jsonl(path):
+    rows = []
+    if not Path(path).is_file():
+        return rows
+    with io.open(str(path), "r", encoding="utf-8") as handle:
+        for line in handle:
+            try:
+                row = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(row, dict):
+                rows.append(row)
+    return rows
 
 
 def inventory(root, index_dir, derived_dirs, mode):
@@ -48,16 +64,19 @@ def main():
     parser.add_argument("--skip-extract", action="store_true", help="skip HTML/PDF/Office text extraction")
     parser.add_argument("--agent", help="YouNavi agent-cli path")
     parser.add_argument("--timeout", type=int, default=900)
+    parser.add_argument("--team-learning-authorized", action="store_true",
+                        help="explicitly allow redacted materials to enter team distillation candidates")
     args = parser.parse_args()
 
-    root = expand_path(args.workspace_root)
-    if not root.is_dir():
-        print("ERROR: workspace root is not a directory: {0}".format(root), file=sys.stderr)
+    source_root = expand_path(args.workspace_root)
+    if not source_root.is_dir():
+        print("ERROR: workspace root is not a directory: {0}".format(source_root), file=sys.stderr)
         return 2
-    index_dir = root / "咨询转化工作区" / "_系统" / "资料索引"
-    processing_dir = root / "咨询转化工作区" / "_系统" / "转写与OCR"
+    workspace = locate_workspace(source_root)
+    index_dir = workspace / "_系统" / "资料索引"
+    processing_dir = workspace / "_系统" / "转写与OCR"
     run_id = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    run_dir = root / "咨询转化工作区" / "_系统" / "蒸馏任务" / run_id
+    run_dir = workspace / "_系统" / "蒸馏任务" / run_id
     transcript_dir = processing_dir / "转写"
     ocr_dir = processing_dir / "OCR"
     document_dir = processing_dir / "文档文本"
@@ -69,11 +88,25 @@ def main():
     # Keep derived paths stable so later incremental runs can skip unchanged
     # transcripts and OCR results.
     derived_dirs = [transcript_dir, ocr_dir / "text", document_dir]
-    if inventory(root, index_dir, derived_dirs, args.mode) != 0:
+    if inventory(source_root, index_dir, derived_dirs, args.mode) != 0:
         return 1
 
+    # IMA caches and local files now enter one content-addressed ledger.  The
+    # same normalization/deduplication batch below consumes both sources.
+    if run([sys.executable, SCRIPT_DIR / "source_artifacts.py", workspace]) != 0:
+        return 1
+    source_ledger = index_dir / "source-artifacts.jsonl"
+    ima_inputs = []
+    for row in read_jsonl(source_ledger):
+        if row.get("source_type") != "ima":
+            continue
+        for value in row.get("derived_text_paths") or []:
+            path = Path(value)
+            if path.is_file() and path.suffix.lower() == ".txt":
+                ima_inputs.append(path.parent)
+
     if args.run_transcription:
-        command = [sys.executable, SCRIPT_DIR / "batch_transcribe_younavi.py", root,
+        command = [sys.executable, SCRIPT_DIR / "batch_transcribe_younavi.py", source_root,
                    "--output-dir", transcript_dir, "--timeout", args.timeout]
         if args.agent:
             command.extend(["--agent", args.agent])
@@ -82,33 +115,40 @@ def main():
             return code
 
     if args.run_ocr:
-        code = run([sys.executable, SCRIPT_DIR / "ocr_long_images.py", root,
+        code = run([sys.executable, SCRIPT_DIR / "ocr_long_images.py", source_root,
                     "--output-dir", ocr_dir])
         if code not in (0, 1):
             return code
 
     if not args.skip_extract:
-        code = run([sys.executable, SCRIPT_DIR / "extract_text_sources.py", root,
+        code = run([sys.executable, SCRIPT_DIR / "extract_text_sources.py", source_root,
                     "--output-dir", document_dir])
         if code not in (0, 1):
             return code
 
-    if inventory(root, index_dir, derived_dirs, args.mode) != 0:
+    if inventory(source_root, index_dir, derived_dirs, args.mode) != 0:
         return 1
 
     # Build one redacted, deduplicated evidence manifest only after all
     # available transcription, OCR and document extraction has completed.
-    batch_path = root / "咨询转化工作区" / "_系统" / "案例标准化" / ("蒸馏批次-" + run_id + ".jsonl")
-    batch_code = run([sys.executable, SCRIPT_DIR / "prepare_distillation_batch.py",
-                      transcript_dir, ocr_dir / "text", document_dir, "--output", batch_path])
+    batch_path = workspace / "_系统" / "案例标准化" / ("蒸馏批次-" + run_id + ".jsonl")
+    batch_inputs = [transcript_dir, ocr_dir / "text", document_dir] + sorted(set(ima_inputs))
+    batch_code = run([sys.executable, SCRIPT_DIR / "prepare_distillation_batch.py"] + batch_inputs + ["--output", batch_path,
+                      "--processing-basis", "team_learning_authorized" if args.team_learning_authorized else "local_analysis"])
     if batch_code != 0:
         return batch_code
 
-    shadow_code = run([sys.executable, SCRIPT_DIR / "run_shadow_analysis.py", root,
+    shadow_code = run([sys.executable, SCRIPT_DIR / "run_shadow_analysis.py", workspace,
                        "--batch", batch_path, "--count", "3"])
 
     coverage_path = index_dir / "coverage-report.json"
     coverage = read_json(coverage_path)
+    ima_ready = sum(1 for row in read_jsonl(source_ledger) if row.get("source_type") == "ima")
+    if not coverage.get("candidate_total") and ima_ready:
+        coverage["full_processing_ready"] = True
+        coverage["gate"] = "ready_for_agent_distillation"
+    coverage["ima_ready"] = ima_ready
+    coverage["unified_source_ledger"] = str(source_ledger)
     gate = "ready_for_agent_distillation" if coverage.get("full_processing_ready") else "partial_ready_pending_processing"
     gate_payload = {
         "run_id": run_id,

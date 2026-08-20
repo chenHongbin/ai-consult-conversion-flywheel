@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
+from workspace_paths import locate_workspace
 
 
 def load_rows(path):
@@ -57,7 +58,7 @@ def choose_rows(rows, limit):
 
 
 def find_latest_batch(workspace):
-    root = expand_path(workspace) / "咨询转化工作区" / "_系统" / "案例标准化"
+    root = locate_workspace(workspace) / "_系统" / "案例标准化"
     batches = sorted(root.glob("蒸馏批次-*.jsonl"))
     return batches[-1] if batches else None
 
@@ -76,7 +77,7 @@ def main():
         return 3
     selected = choose_rows(rows, max(1, args.count))
     run_id = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    output_root = workspace / "咨询转化工作区" / "_系统" / "影子试用" / run_id
+    output_root = locate_workspace(workspace) / "_系统" / "影子试用" / run_id
     ensure_dir(output_root)
     queue_path = output_root / "analysis-queue.jsonl"
     tasks = []
@@ -93,7 +94,7 @@ def main():
             "transcript_quality": row.get("transcript_quality", row.get("ocr_quality", "unknown")),
             "prompt": (
                 "请使用当前候选咨询能力包、机构知识（未确认事实不得补写）、患者决策洞察和咨询转化八步法，"
-                "分析这条材料。输出赖老师自动化分析器风格的咨询复盘报告：阶段、患者原话、候选顾虑、"
+                "分析这条材料。输出标准咨询复盘报告：阶段、患者原话、候选顾虑、"
                 "咨询师做对的地方、流失节点、销冠动作、下一步建议、禁用表达、医疗边界和一个新人训练动作。"
                 "明确区分已观察事实与 AI 假设；不要因为结果未知而跳过。"
             ),

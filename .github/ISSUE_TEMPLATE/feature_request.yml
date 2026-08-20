@@ -1,0 +1,32 @@
+name: 功能建议
+description: 建议所有机构都能复用的公共 Core 能力
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 用户问题
+      description: 先描述真实问题，不要只描述想加的按钮。
+    validations:
+      required: true
+  - type: textarea
+    id: public_core
+    attributes:
+      label: 为什么属于公共 Core
+      description: 说明为什么不能通过某家机构的本地知识或配置解决。
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: 可验证结果
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 隐私确认
+      options:
+        - label: 我不会提交真实患者资料、机构机密或访问凭证。
+          required: true

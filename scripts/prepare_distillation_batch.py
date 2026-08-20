@@ -12,12 +12,8 @@ import unicodedata
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
+from privacy_guard import ADDRESS, EMAIL, ID_CARD, MEDICAL_ID, PHONE, WECHAT, normalize_text
 
-
-PHONE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
-ID_CARD = re.compile(r"(?<!\d)\d{17}[\dXx](?!\d)")
-EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
-WECHAT = re.compile(r"(微信号|微信|wxid)\s*[:：]?\s*[A-Za-z][A-Za-z0-9_-]{5,}", re.I)
 
 DERIVED_PARTS = {
     "转写与OCR", "案例标准化", "资料索引", "蒸馏任务", "蒸馏候选",
@@ -26,10 +22,13 @@ DERIVED_PARTS = {
 
 
 def redact(text):
+    text = normalize_text(text)
     text = PHONE.sub("[手机号已脱敏]", text)
     text = ID_CARD.sub("[证件号已脱敏]", text)
     text = EMAIL.sub("[邮箱已脱敏]", text)
     text = WECHAT.sub("[微信号已脱敏]", text)
+    text = MEDICAL_ID.sub("[病历编号已脱敏]", text)
+    text = ADDRESS.sub("[地址已脱敏]", text)
     return text
 
 
@@ -169,6 +168,8 @@ def main():
     parser.add_argument("inputs", nargs="+", help="workspace or directories containing txt files")
     parser.add_argument("--output", required=True, help="distillation-batch.jsonl path")
     parser.add_argument("--max-chars", type=int, default=30000)
+    parser.add_argument("--processing-basis", choices=("local_analysis", "team_learning_authorized"),
+                        default="local_analysis")
     args = parser.parse_args()
     input_roots = [expand_path(value) for value in args.inputs]
     output = expand_path(args.output)
@@ -231,8 +232,11 @@ def main():
             "outcome_provenance": outcome_provenance,
             "text": safe,
             "redaction_status": "automatic_pattern_redaction",
-            "consent_status": "unknown",
+            "processing_basis": args.processing_basis,
+            "consent_status": "authorized_for_team_learning" if args.processing_basis == "team_learning_authorized" else "local_analysis_only",
             "privacy_risk": "automatic_screening_required",
+            "evidence_trust": "untrusted_evidence",
+            "source_instructions_are_data": True,
             "transcript_quality": quality,
             "evidence_weight": weight,
             "ocr_quality_score": derived_meta.get("ocr_quality_score") if isinstance(derived_meta, dict) else None,
@@ -242,8 +246,9 @@ def main():
             "behavior_confidence": "unknown",
             "outcome_confidence": "unknown",
             "review_status": "auto_quarantined" if quality == "low" else "auto_processed",
-            "inclusion_status": "included_with_weight" if quality != "low" else "stored_not_used_as_sole_evidence",
-                "split": "candidate",
+            "inclusion_status": (("included_with_weight" if quality != "low" else "stored_not_used_as_sole_evidence")
+                                 if args.processing_basis == "team_learning_authorized" else "local_analysis_only_not_team_learning"),
+                "split": "candidate" if args.processing_basis == "team_learning_authorized" else "quarantine",
                 "truncated": truncated,
             })
     with io.open(str(output), "w", encoding="utf-8") as handle:

@@ -13,7 +13,9 @@ from pathlib import Path
 
 from compat import ensure_dir, expand_path
 from archive_team_inbox import archive_workspace
+from daily_review import CONSULT_TASK_TYPES, queue_status, register_source_task, validate_date
 from generate_management_dashboard import build_dashboard
+from workspace_paths import locate_workspace
 
 
 AUDIO_EXTS = {".mp3", ".m4a", ".wav", ".aac", ".flac", ".ogg", ".amr"}
@@ -94,7 +96,9 @@ def classify_archived(row, archive_path):
         return "meeting_analysis"
     if category == "data":
         return "data_validation_and_dashboard"
-    if kind == "01_咨询录音" or kind == "03_一对一沟通":
+    if kind == "03_一对一沟通":
+        return "employee_one_on_one_analysis"
+    if kind == "01_咨询录音":
         if suffix in AUDIO_EXTS:
             return "audio_transcription_and_consult_analysis"
         return "chat_or_text_analysis"
@@ -133,12 +137,12 @@ def main():
     parser.add_argument("--stability-minutes", type=int, default=30)
     parser.add_argument("--force", action="store_true", help="忽略文件稳定等待时间，仅用于补跑")
     args = parser.parse_args()
-    root = expand_path(args.workspace_root)
+    root = locate_workspace(expand_path(args.workspace_root))
     team_root = root / "08_团队管理"
     if not team_root.is_dir():
         print("ERROR: 08_团队管理 not found", file=sys.stderr)
         return 2
-    report_date = args.date or datetime.date.today().isoformat()
+    report_date = validate_date(args.date or datetime.date.today().isoformat())
     automation_root = root / "_系统" / "团队自动化"
     queue_dir = automation_root / "01_待处理队列"
     log_dir = automation_root / "02_运行日志"
@@ -183,6 +187,8 @@ def main():
             "original_source": row.get("source"),
             "source_hash": fingerprint,
             "task_type": classify_archived(row, archive_path),
+            "work_date": report_date,
+            "source_date": row.get("date"),
             "status": "queued",
             "next_action": "由定时 Agent 执行并将报告写入对应成员/团队报告目录",
             "created_at": datetime.datetime.now().isoformat(),
@@ -209,6 +215,7 @@ def main():
             "source": relative,
             "source_hash": fingerprint,
             "task_type": classify(path, relative),
+            "work_date": report_date,
             "status": "queued",
             "next_action": "由定时 Agent 执行并将报告写入对应成员/团队报告目录",
             "created_at": datetime.datetime.now().isoformat(),
@@ -224,6 +231,21 @@ def main():
             continue
         task_ids.add(task.get("task_id"))
         merged_tasks.append(task)
+    v21_registered = 0
+    for task in merged_tasks:
+        if task.get("task_type") not in CONSULT_TASK_TYPES:
+            continue
+        review_task, created = register_source_task(root, task, task.get("work_date") or report_date)
+        if created:
+            v21_registered += 1
+        for field in (
+            "analysis_task_id", "artifact_id", "conversation_id", "patient_case_id",
+            "consultant_day_id", "team_day_id", "employee_id", "employee_name",
+            "grouping_state", "suggested_group_id",
+        ):
+            task[field] = review_task.get(field)
+        task["review_status"] = review_task.get("status")
+        task["analysis_contract"] = review_task.get("analysis_contract")
     with io.open(str(queue_path), "w", encoding="utf-8") as handle:
         for task in merged_tasks:
             handle.write(json.dumps(task, ensure_ascii=False) + "\n")
@@ -231,9 +253,12 @@ def main():
     dashboard_path = ""
     dashboard_generated_at = ""
     data_completeness = "missing"
-    pending_analysis_count = len([item for item in merged_tasks if item.get("status", "queued") not in ("completed", "skipped")])
+    review_projection = queue_status(root, report_date)
+    pending_analysis_count = review_projection.get("pending", 0) + review_projection.get("retryable_failed", 0)
     failed_root = root / "_系统" / "失败记录"
     failed_item_count = sum(1 for item in failed_root.rglob("*") if item.is_file()) if failed_root.is_dir() else 0
+    failed_item_count += review_projection.get("status_counts", {}).get("failed", 0)
+    failed_item_count += review_projection.get("status_counts", {}).get("quarantined", 0)
     try:
         dashboard_data, dashboard_output = build_dashboard(root, "today", report_date)
         dashboard_path = str(dashboard_output)
@@ -245,8 +270,9 @@ def main():
     save_json(log_path, {
         "date": report_date,
         "workspace": str(root),
-        "schedule": "22:00",
+        "schedule": "22:30",
         "tasks_created": len(tasks),
+        "v21_analysis_tasks_registered": v21_registered,
         "queue_items": len(merged_tasks),
         "archive_items": len(archive_rows),
         "skipped": skipped,
@@ -256,9 +282,9 @@ def main():
         "data_completeness": data_completeness,
         "pending_analysis_count": pending_analysis_count,
         "failed_item_count": failed_item_count,
-        "note": "本脚本负责扫描、去重和排队；转写、OCR、咨询分析和看板生成由定时 Agent 继续执行。",
+        "note": "本脚本已建立可恢复的 V2.1 分析任务；定时 Agent 必须领取任务、完成转写/OCR与语义分析、提交逐案报告，再生成员工/团队日报。",
     })
-    print(json.dumps({"date": report_date, "tasks_created": len(tasks),
+    print(json.dumps({"date": report_date, "tasks_created": len(tasks), "v21_analysis_tasks_registered": v21_registered,
                       "queue": str(queue_path), "log": str(log_path), "dashboard_path": dashboard_path,
                       "dashboard_generated_at": dashboard_generated_at, "data_completeness": data_completeness,
                       "pending_analysis_count": pending_analysis_count, "failed_item_count": failed_item_count}, ensure_ascii=False))

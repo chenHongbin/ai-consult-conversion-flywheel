@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Shared helpers for the atomic three-component runtime release."""
+"""Shared helpers for the atomic four-component runtime release."""
 
 import hashlib
 import io
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
+from workspace_paths import assert_within, locate_workspace
 
 
 COMPONENTS = {
@@ -17,10 +19,11 @@ COMPONENTS = {
     "knowledge": "当前机构知识",
     "patient_insight": "患者洞察",
 }
+VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
 
 def system_root(workspace):
-    return expand_path(workspace) / "咨询转化工作区" / "_系统"
+    return locate_workspace(workspace) / "_系统"
 
 
 def release_root(workspace):
@@ -81,8 +84,9 @@ def sha256(path):
 
 def component_snapshot(workspace, component):
     pointer = load_json(pointer_path(workspace, component), {"status": "base_only"}) or {"status": "base_only"}
-    package_path = expand_path(pointer.get("package_path", "")) if pointer.get("package_path") else None
-    runtime_path = expand_path(pointer.get("runtime_context_path", "")) if pointer.get("runtime_context_path") else None
+    workspace_root = locate_workspace(workspace)
+    package_path = assert_within(pointer.get("package_path"), workspace_root, "package_path") if pointer.get("package_path") else None
+    runtime_path = assert_within(pointer.get("runtime_context_path"), workspace_root, "runtime_context_path") if pointer.get("runtime_context_path") else None
     if pointer.get("status") == "active" and (not package_path or not runtime_path or not package_path.is_file() or not runtime_path.is_file()):
         raise ValueError("{0} active pointer has missing artifacts".format(component))
     scope = pointer.get("scope") or {}
@@ -107,7 +111,15 @@ def load_release_active(workspace):
 
 
 def load_release_file(workspace, release_version):
+    validate_version(release_version)
     return load_json(release_root(workspace) / "versions" / str(release_version) / "release.json", None)
+
+
+def validate_version(value):
+    value = str(value or "")
+    if not VERSION_RE.match(value):
+        raise ValueError("invalid version; use letters, numbers, dot, underscore or dash")
+    return value
 
 
 def scope_conflicts(snapshots):

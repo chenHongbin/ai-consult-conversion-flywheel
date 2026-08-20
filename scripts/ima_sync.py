@@ -13,11 +13,19 @@ import hashlib
 import io
 import json
 import math
+import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
+from workspace_paths import assert_within, locate_workspace
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 
 
 POSITIVE = ("已到", "已约", "预约成功", "到院", "成交", "微现到", "微跟到", "优秀", "销冠", "红板")
@@ -39,7 +47,7 @@ def now():
 
 
 def paths(workspace):
-    root = expand_path(workspace) / "咨询转化工作区" / "_系统" / "IMA同步"
+    root = locate_workspace(workspace) / "_系统" / "IMA同步"
     return {
         "root": root,
         "manifest": root / "ima-manifest.jsonl",
@@ -83,16 +91,30 @@ def load_jsonl(path):
 def write_jsonl(path, rows):
     path = Path(path)
     ensure_dir(path.parent)
-    with io.open(str(path), "w", encoding="utf-8") as handle:
-        for row in rows:
-            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+    descriptor, temporary = tempfile.mkstemp(prefix=".ima-", suffix=".jsonl", dir=str(path.parent))
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            for row in rows:
+                handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, str(path)) if hasattr(os, "replace") else os.rename(temporary, str(path))
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
 
 
 def append_jsonl(path, row):
     path = Path(path)
     ensure_dir(path.parent)
     with io.open(str(path), "a", encoding="utf-8") as handle:
+        if fcntl:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+        if fcntl:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def read_input(path):
@@ -268,6 +290,7 @@ def command_queue(args):
 
 def command_record(args):
     target = paths(args.workspace_root)
+    workspace = locate_workspace(args.workspace_root)
     rows = load_jsonl(target["manifest"])
     found = None
     for row in rows:
@@ -286,9 +309,16 @@ def command_record(args):
     if args.error:
         found["last_error"] = args.error
     if args.derived_path:
-        found["derived_path"] = args.derived_path
+        derived = assert_within(args.derived_path, workspace, "IMA derived_path")
+        if not derived.is_file():
+            raise ValueError("IMA derived_path does not exist: {0}".format(derived))
+        found["derived_path"] = str(derived)
     if args.cache_path:
-        found["cache_path"] = args.cache_path
+        cache_path = assert_within(args.cache_path, workspace, "IMA cache_path")
+        if not cache_path.is_file():
+            raise ValueError("IMA cache_path does not exist: {0}".format(cache_path))
+        found["cache_path"] = str(cache_path)
+        found["content_hash"] = file_sha256(cache_path)
     if args.quality:
         found["quality"] = args.quality
     write_jsonl(target["manifest"], rows)
@@ -299,9 +329,18 @@ def command_record(args):
         append_jsonl(target["events"], event)
     if args.cache_path:
         append_jsonl(target["cache"], {"source_id": found["source_id"], "media_id": found.get("media_id"),
-                                       "cache_path": args.cache_path, "created_at": now(),
+                                       "cache_path": found["cache_path"],
+                                       "content_hash": found["content_hash"], "created_at": now(),
                                        "mode": args.cache_mode})
     print(json.dumps({"status": "recorded", "source_id": found["source_id"], "material_status": status}, ensure_ascii=False))
+
+
+def file_sha256(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def command_status(args):
@@ -347,7 +386,16 @@ def main():
     if not getattr(args, "handler", None):
         parser.print_help()
         return 2
-    return args.handler(args) or 0
+    if args.command == "status" or not fcntl:
+        return args.handler(args) or 0
+    target = paths(args.workspace_root)
+    ensure_dir(target["root"])
+    with io.open(str(target["root"] / ".sync.lock"), "a", encoding="utf-8") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            return args.handler(args) or 0
+        finally:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
 
 if __name__ == "__main__":

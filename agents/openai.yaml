@@ -1,7 +1,7 @@
 interface:
   display_name: "AI咨询转化飞轮"
-  short_description: "发现团队断点、复制销冠能力、管理咨询转化的 AI Skill"
-  default_prompt: "使用 $medical-consult-conversion-coach（AI咨询转化飞轮 v2.0）。核心用户是咨询主管、咨询总监和机构负责人；默认先回答今天最该处理的团队断点、管理待办、训练动作和复查标准。允许从一通录音、一段微信或一张截图开始，不等待完整患者档案。每条样本同时输出患者推进、员工辅导、团队学习三层结论，并回链本地证据。需要初始化时必须运行 scripts/init_consult_workspace.py 和 scripts/verify_consult_workspace.py，只有 status=canonical 才能报告完成。主管可说“开始今天的工作、复核今日重点、生成晨会训练、辅导这个员工、复盘今天、刷新咨询管理工作台”。一线仍可直接分析咨询、回复、回访、陪练和生成视觉素材。没有预约、到院或成交结果时，只说明行为改善和时间节省，不宣称转化提升。"
+  short_description: "全量复盘咨询，并生成与患者阶段匹配的下一步内容和训练"
+  default_prompt: "使用 $medical-consult-conversion-coach。尚未设置时进入三阶段向导；第一轮只问用户是自己做咨询还是管理团队，不得先问机构、资料来源或IMA。"
 
 policy:
   allow_implicit_invocation: true

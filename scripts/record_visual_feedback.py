@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
+from workspace_paths import locate_workspace
 
 
 def main():
@@ -24,7 +25,7 @@ def main():
     parser.add_argument("--note", default="")
     args = parser.parse_args()
     root = expand_path(args.workspace_root)
-    feedback_path = root / "咨询转化工作区" / "_系统" / "视觉反馈" / "feedback.jsonl"
+    feedback_path = locate_workspace(root) / "_系统" / "视觉反馈" / "feedback.jsonl"
     ensure_dir(feedback_path.parent)
     record = {
         "schema_version": "1.0-visual-feedback",

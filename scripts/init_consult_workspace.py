@@ -6,9 +6,11 @@ import argparse
 import io
 import json
 import os
+import uuid
 from pathlib import Path
 
 from compat import ensure_dir, expand_path
+from project_version import core_version, WORKSPACE_SCHEMA_VERSION
 
 
 VISIBLE_FOLDERS = [
@@ -63,6 +65,8 @@ OUTPUT_FOLDERS = [
     ("04_咨询分析与陪练", "咨询复盘卡、陪练结果和跟进建议"),
     ("05_患者决策洞察与陪练", "患者决策状态、常见疑义、合成场景和训练建议"),
     ("06_咨询视觉素材", "朋友圈配图、微信跟进素材、案例示意、环境示意和培训视觉卡"),
+    ("07_内容行动工作台", "跟进话术、朋友圈文案、患者科普和私信承接素材"),
+    ("08_产品反馈", "本地脱敏反馈卡；不保存患者原始材料或机构机密"),
 ]
 
 VISUAL_OUTPUT_FOLDERS = [
@@ -71,6 +75,13 @@ VISUAL_OUTPUT_FOLDERS = [
     ("03_案例与过程示意", "匿名案例示意和过程解释图"),
     ("04_医院环境与医生科普", "环境示意、医生科普和机构品牌素材"),
     ("05_团队培训视觉卡", "普通/优化回复对比和动作拆解图"),
+]
+
+CONTENT_OUTPUT_FOLDERS = [
+    ("01_跟进话术", "围绕当前患者唯一目标生成的微信跟进内容"),
+    ("02_朋友圈文案", "经过事实与合规检查的朋友圈文案"),
+    ("03_患者科普", "不替代诊疗建议的患者科普内容"),
+    ("04_私信承接", "评论区、平台私信和加微信后承接素材"),
 ]
 
 SYSTEM_FOLDERS = [
@@ -88,12 +99,16 @@ SYSTEM_FOLDERS = [
     "自动化",
     "发布",
     "视觉生成",
+    "内容资产",
     "IMA同步",
     "个人成长",
+    "每日复盘",
+    "审核账本",
 ]
 
 WORKSPACE_MANIFEST_NAME = "工作区清单.json"
 STANDARD_WORKSPACE_NAME = "咨询转化工作区"
+CORE_ROOT = Path(__file__).resolve().parents[1]
 
 
 def safe_name(value):
@@ -125,6 +140,16 @@ def write_json(path, value):
         handle.write("\n")
 
 
+def is_inside(path, parent):
+    path = Path(os.path.realpath(str(path)))
+    parent = Path(os.path.realpath(str(parent)))
+    try:
+        path.relative_to(parent)
+        return True
+    except ValueError:
+        return False
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Create a simple consultation conversion workspace in a selected local folder."
@@ -150,6 +175,17 @@ def main():
     )
     args = parser.parse_args()
 
+    embedded_manifest = Path(__file__).resolve().parents[1] / "institution-pack" / "manifest.json"
+    if embedded_manifest.is_file():
+        try:
+            with io.open(str(embedded_manifest), "r", encoding="utf-8") as handle:
+                embedded = json.load(handle)
+        except (IOError, ValueError):
+            embedded = {}
+        if embedded.get("runtime_role") == "frontline" and args.role == "manager":
+            print(json.dumps({"status": "rejected", "reason": "frontline_package_cannot_create_manager_workspace"}, ensure_ascii=False))
+            return 2
+
     if args.name != STANDARD_WORKSPACE_NAME:
         print(
             json.dumps(
@@ -167,6 +203,15 @@ def main():
 
     selected = expand_path(args.workspace_root)
     root = selected if args.use_root else selected / STANDARD_WORKSPACE_NAME
+    if is_inside(root, CORE_ROOT):
+        print(json.dumps({
+            "status": "rejected",
+            "reason": "workspace_must_be_outside_core_directory",
+            "core_root": str(CORE_ROOT),
+            "requested_workspace": str(root),
+            "message": "请选择 Skill 安装目录之外的业务文件夹，避免更新公共 Core 时覆盖机构数据。",
+        }, ensure_ascii=False))
+        return 2
     ensure_dir(root)
 
     for folder, _ in VISIBLE_FOLDERS:
@@ -177,6 +222,8 @@ def main():
         ensure_dir(root / "07_我的产出" / folder)
     for folder, _ in VISUAL_OUTPUT_FOLDERS:
         ensure_dir(root / "07_我的产出" / "06_咨询视觉素材" / folder)
+    for folder, _ in CONTENT_OUTPUT_FOLDERS:
+        ensure_dir(root / "07_我的产出" / "07_内容行动工作台" / folder)
     team_root = root / "08_团队管理"
     for folder, _ in TEAM_ROOT_FOLDERS:
         ensure_dir(team_root / folder)
@@ -202,19 +249,36 @@ def main():
     ensure_dir(system / "当前机构知识" / "versions")
     ensure_dir(system / "患者洞察" / "versions")
     ensure_dir(system / "发布" / "versions")
-    write_json(
-        system / WORKSPACE_MANIFEST_NAME,
+    manifest_path = system / WORKSPACE_MANIFEST_NAME
+    existing_manifest = {}
+    if manifest_path.is_file():
+        try:
+            with io.open(str(manifest_path), "r", encoding="utf-8") as handle:
+                existing_manifest = json.load(handle)
+        except (IOError, ValueError):
+            existing_manifest = {}
+    manifest = dict(existing_manifest or {})
+    manifest.update(
         {
             "product": "AI咨询转化飞轮",
-            "layout_version": "v2.0",
+            "layout_version": WORKSPACE_SCHEMA_VERSION,
+            "workspace_schema_version": WORKSPACE_SCHEMA_VERSION,
+            "created_by_core_version": manifest.get("created_by_core_version") or core_version(),
+            "last_opened_by_core_version": core_version(),
+            "data_ownership": "local_user_controlled",
+            "upstream_sync": "disabled",
+            "telemetry": "disabled_by_default",
+            "institution_binding": "one_workspace_one_institution",
+            "workspace_id": manifest.get("workspace_id") or "WS-" + uuid.uuid4().hex,
             "workspace_root": str(root),
             "container_name": STANDARD_WORKSPACE_NAME if not args.use_root else "用户指定的工作区本身",
             "created_by": "scripts/init_consult_workspace.py",
             "visible_folders": [folder for folder, _ in VISIBLE_FOLDERS],
             "system_folders": SYSTEM_FOLDERS,
             "team_mode": "single_manager_team",
-        },
+        }
     )
+    write_json(manifest_path, manifest)
     write_if_missing(
         system / "发布" / "active.json",
         json.dumps(
@@ -223,7 +287,7 @@ def main():
                 "status": "base_only",
                 "release_id": None,
                 "release_version": None,
-                "message": "三类运行时组件完成审核后，由统一发布流程生成原子版本",
+                "message": "咨询能力、机构知识、患者洞察和内容资产完成审核后，由统一发布流程生成原子版本",
             },
             ensure_ascii=False,
             indent=2,
@@ -286,7 +350,7 @@ def main():
         profile,
         json.dumps(
             {
-                "version": "2.0",
+                "version": "2.1",
                 "workspace": str(root),
                 "runtime": {"preferred": ["workbuddy", "trae", "codex", "claude"]},
                 "sources": {
@@ -312,14 +376,14 @@ def main():
                 },
                 "automation": {
                     "enabled": True,
-                    "schedule": "22:00",
+                    "schedule": "22:30",
                     "scheduler": "workbuddy_or_codex_agent",
                     "stability_minutes": 30,
                     "catch_up_next_run": True,
                 },
                 "release": {
                     "active_version": "base_only",
-                    "candidate_version": "v2.0",
+                    "candidate_version": "v2.1",
                     "auto_publish": False,
                 },
                 "patient_insights": {
@@ -340,6 +404,18 @@ def main():
                     "data_root": "_系统/管理工作台",
                     "refresh": "nightly_plus_manual",
                     "primary_user": "consultation_manager",
+                },
+                "daily_review": {
+                    "enabled": True,
+                    "contract": "2.1-case-report",
+                    "mode": "full_standard_plus_priority_deep_review",
+                    "patient_grouping": "suggest_then_manager_confirm",
+                    "outcomes": "unknown_until_observed",
+                    "promise": "behavior_improvement_and_management_efficiency",
+                    "batch_size": 20,
+                    "concurrency": 4,
+                    "lease_minutes": 30,
+                    "max_attempts": 3,
                 },
             },
             ensure_ascii=False,
@@ -372,7 +448,7 @@ def main():
                 "first_case_ready": False,
                 "team_management_ready": False,
                 "metrics_baseline_ready": False,
-                "active_capability_version": "v2.0-base",
+                "active_capability_version": "v2.1-base",
             },
             ensure_ascii=False,
             indent=2,
@@ -416,13 +492,15 @@ def main():
         json.dumps(
             {
                 "enabled": True,
-                "schedule": "22:00",
+                "schedule": "22:30",
                 "scheduler": "workbuddy_or_codex_agent",
                 "scan_script": "scripts/run_nightly_cycle.py",
                 "dashboard_script": "scripts/generate_management_dashboard.py",
                 "stability_minutes": 30,
                 "run_when_computer_wakes": True,
                 "retry_next_run": True,
+                "worker_script": "scripts/daily_review.py",
+                "worker_flow": ["claim", "complete_or_fail", "aggregate"],
                 "do_not": ["自动发布能力包", "自动做人事定级", "自动发送微信", "自动对外发布"],
             },
             ensure_ascii=False,
@@ -450,7 +528,7 @@ def main():
     )
     write_if_missing(
         root / "README_先看这里.md",
-        """# AI咨询转化飞轮工作区\n\n只记住一件事：把资料放进看起来最接近的文件夹即可，不需要先整理。首次说“蒸馏销冠”时，我会扫描当前工作空间里的全部候选资料。\n\n{folder_lines}\n\n## 第一次使用\n\n1. 告诉 AI咨询转化飞轮：机构名称和要管理的科室。\n2. 选择使用本地文件夹、IMA，或两种都用。\n3. 第一次说“蒸馏销冠完整销售逻辑和流程”，我会扫描并处理当前工作空间的全部录音、聊天记录、截图和文档。\n4. 如果只想看一条，明确说“只分析这一条”。\n5. 如果要管理团队，告诉我主管姓名和成员名单，直接说“建立我的团队档案”。\n6. 每天把新增资料放入对应员工的 `01_今天放这里`，晚上由 WorkBuddy/Codex 定时任务处理。\n\n## 团队管理文件夹\n\n{team_lines}\n\n当前团队主管：{manager_name}。\n\n新人训练资料在 `06_团队培训与反馈/01_新人培训`；流失、顾虑和销冠能力包在 `07_我的产出` 下的对应文件夹。会议录音放入 `08_团队管理/02_团队会议/01_今天放这里`；团队数据放入 `08_团队管理/03_团队数据/01_今天放这里`；报告在 `08_团队管理/04_团队报告`。日期、分类和命名由 Skill 自动处理。\n\n`_系统` 由 Skill 自动维护，不需要手动修改。未脱敏的原始资料只保存在当前工作区，不会自动进入通用 Skill 或发布包。\n""".format(folder_lines=folder_lines, team_lines=team_lines, manager_name=manager_name),
+        """# AI咨询转化飞轮工作区\n\n工作区已经由首次设置向导创建。以后只需要把微信截图、录音或文本放进对应咨询师的 `01_今天放这里`，或者直接在对话中上传；不需要改文件名，也不需要理解后台目录。\n\n{folder_lines}\n\n## 接下来怎么用\n\n1. 先上传一条真实微信、录音或文本，确认第一份分析符合实际。\n2. 主管每天说“分析今天全部咨询”或“查看今天重点”。\n3. 一线每天说“分析这一条”“帮我回复”或“陪我练一遍”。\n4. 需要补充本地资料或 IMA 时，设置完成后再说“接入我的资料”。\n5. 每天新增材料放入对应员工的 `01_今天放这里`；宿主不支持自动运行时使用同合同的手动入口。\n\n## 团队管理文件夹\n\n{team_lines}\n\n当前团队主管：{manager_name}。\n\n新人训练资料在 `06_团队培训与反馈/01_新人培训`；流失、顾虑和销冠能力包在 `07_我的产出` 下的对应文件夹。会议录音放入 `08_团队管理/02_团队会议/01_今天放这里`；团队数据放入 `08_团队管理/03_团队数据/01_今天放这里`；报告在 `08_团队管理/04_团队报告`。日期、分类和命名由 Skill 自动处理。\n\n`_系统` 由 Skill 自动维护，不需要手动修改。未脱敏的原始资料只保存在当前工作区，不会自动进入通用 Skill 或发布包。\n""".format(folder_lines=folder_lines, team_lines=team_lines, manager_name=manager_name),
     )
 
     print(
@@ -463,7 +541,8 @@ def main():
                 "members": parse_members(args.members),
                 "system_folder": str(system),
                 "manifest": str(system / WORKSPACE_MANIFEST_NAME),
-                "layout_version": "v2.0",
+                "layout_version": WORKSPACE_SCHEMA_VERSION,
+                "core_version": core_version(),
                 "canonical_layout": True,
                 "profile": str(profile),
             },

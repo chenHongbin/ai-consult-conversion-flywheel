@@ -4,6 +4,18 @@
   "default_route": "conversation_diagnosis",
   "routes": [
     {
+      "id": "onboarding_setup",
+      "label": "首次设置与初始化采访",
+      "type": "shared",
+      "aliases": ["开始设置", "第一次设置", "初始化我的咨询助手", "建立我的机构", "建立我的团队", "让AI更懂我", "咨询师初始化", "建立我的咨询画像", "继续初始化", "完善我的设置"],
+      "keywords": ["首次设置", "初始化采访", "用户画像", "团队名单", "自动运行授权"],
+      "references": ["references/v2.1.1-onboarding-runtime.md", "references/workspace-initialization-contract.md", "references/safety-and-sanitization.md"],
+      "required_inputs": ["角色、机构和部门；主管补成员名单，一线补本人称呼"],
+      "output_contract": ["确认摘要", "标准工作区", "结构化画像", "首条真实报告", "自动化真实状态", "角色化日常入口"],
+      "tools": ["scripts/onboarding.py", "scripts/init_consult_workspace.py", "scripts/verify_consult_workspace.py", "scripts/daily_review.py"],
+      "base_available": true
+    },
+    {
       "id": "conversation_diagnosis",
       "label": "患者沟通诊断",
       "type": "frontline",
@@ -12,6 +24,18 @@
       "references": ["references/analysis-and-coaching.md", "references/consultation-eight-step-method.md", "references/consultation-base.md"],
       "required_inputs": ["咨询文本、转写文本或可读取的录音/截图"],
       "output_contract": ["阶段判断", "真实顾虑", "流失节点", "下一步动作", "回复草稿"],
+      "base_available": true
+    },
+    {
+      "id": "product_feedback",
+      "label": "反馈问题或建议",
+      "type": "shared",
+      "aliases": ["我要反馈问题", "我要提建议", "反馈一下", "提一个建议", "安装失败", "分析结果不准", "这个Skill有问题"],
+      "keywords": ["产品反馈", "功能故障", "兼容性", "建议", "分析不准确"],
+      "references": ["references/distribution-and-feedback.md", "references/safety-and-sanitization.md"],
+      "required_inputs": ["问题分类、实际发生、期望结果和使用宿主；不得提供真实患者材料或机构机密"],
+      "output_contract": ["本地脱敏反馈卡", "反馈编号", "交给安装包提供者的下一步"],
+      "tools": ["scripts/product_feedback.py"],
       "base_available": true
     },
     {
@@ -62,7 +86,7 @@
       "id": "no_show_followup",
       "label": "爽约与分阶段回访",
       "type": "frontline",
-      "aliases": ["爽约", "未到院", "回访", "跟进"],
+      "aliases": ["爽约", "未到院", "安排回访", "跟进未回复患者"],
       "keywords": ["爽约", "未到院", "没来", "没到", "失联", "回访", "跟进", "不回复", "已读不回", "再次联系"],
       "references": ["references/analysis-and-coaching.md", "references/consultation-eight-step-method.md", "references/consultant-front-door.md"],
       "required_inputs": ["最近一次沟通和历史跟进记录"],
@@ -81,6 +105,18 @@
       "base_available": true
     },
     {
+      "id": "content_action",
+      "label": "咨询内容行动工作台",
+      "type": "frontline",
+      "aliases": ["帮我写跟进话术", "写条朋友圈", "写患者科普", "写私信回复", "生成下一步内容", "给我可直接发的文案"],
+      "keywords": ["写", "生成", "文案", "话术", "朋友圈", "科普", "科普短文", "私信承接", "评论区回复", "直接发", "下一步内容", "跟进内容"],
+      "references": ["references/content-action-runtime.md", "references/content-knowledge-mapping.json", "references/consultation-eight-step-method.md", "references/safety-and-sanitization.md"],
+      "required_inputs": ["当前对话或内容目标；缺失时只补问一个影响正文的关键信息"],
+      "output_contract": ["内容处方", "可直接使用的主推版本", "无回复备选或配图建议", "不能说的话", "知识缺口", "反馈字段"],
+      "tools": ["scripts/content_feedback.py", "scripts/content_asset.py", "scripts/map_content_knowledge.py"],
+      "base_available": true
+    },
+    {
       "id": "visual_content",
       "label": "咨询视觉与跟进素材",
       "type": "frontline",
@@ -91,6 +127,30 @@
       "output_contract": ["素材类型", "决策任务", "推荐素材组合", "图片提示词", "配套微信文案", "推荐CTA", "反馈字段"],
       "tools": ["scripts/select_visual_asset.py", "scripts/record_visual_feedback.py"],
       "base_available": true
+    },
+    {
+      "id": "daily_review_factory",
+      "label": "每日全量咨询复盘",
+      "type": "manager",
+      "aliases": ["分析今天全部咨询", "批量分析今天咨询", "查看今天重点", "每日全量复盘", "跑今日复盘"],
+      "keywords": ["全量分析", "逐案复盘", "今天全部", "每日复盘", "患者归并", "员工日报", "团队日报"],
+      "references": ["references/v2.1-daily-review-runtime.md", "references/v2.1-case-report-contract.md", "references/v2.1-data-contract.md"],
+      "required_inputs": ["标准咨询转化工作区；员工材料放入各自的01_今天放这里，或直接上传一条材料"],
+      "output_contract": ["逐案报告", "员工日报", "团队日报", "单动作训练卡", "失败与待确认清单"],
+      "tools": ["scripts/run_nightly_cycle.py", "scripts/daily_review.py", "scripts/generate_management_dashboard.py"],
+      "base_available": false
+    },
+    {
+      "id": "employee_review",
+      "label": "查看某个咨询师",
+      "type": "manager",
+      "aliases": ["查看某个咨询师", "查看咨询师", "查看咨询师今天情况", "查看咨询师本周情况", "看咨询师长短板", "查看训练进度"],
+      "keywords": ["咨询师今天", "咨询师本周", "咨询师长板", "咨询师短板", "训练进度", "个人辅导"],
+      "references": ["references/v2.1-daily-review-runtime.md", "references/role-based-review.md", "references/manager-workbench.md"],
+      "required_inputs": ["咨询师姓名或员工编号；缺失时只追问一次"],
+      "output_contract": ["当日患者清单", "长板", "主要短板", "证据", "当前训练动作", "训练改善状态"],
+      "tools": ["scripts/daily_review.py", "scripts/generate_management_dashboard.py"],
+      "base_available": false
     },
     {
       "id": "manager_workbench",

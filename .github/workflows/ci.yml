@@ -1,0 +1,25 @@
+name: Core integrity checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile scripts
+        run: python -m py_compile scripts/*.py
+      - name: Run regression tests
+        run: python -m unittest discover -s tests
+      - name: Check public release invariants
+        run: python scripts/release_check.py
+      - name: Build the single public Skill
+        run: python scripts/build_base_skill_package.py --output-dir dist
+      - name: Verify public Core artifact
+        run: python scripts/verify_public_package.py "dist/AI咨询转化飞轮_v$(cat VERSION).skill"

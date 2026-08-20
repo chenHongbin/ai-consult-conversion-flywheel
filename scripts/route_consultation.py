@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Deterministic front-door router for AI咨询转化飞轮 v2.0.
+"""Deterministic front-door router for AI咨询转化飞轮 V2.1.
 
 The router does not generate a consultation answer. It identifies the primary
 specialist capability, reports the runtime layers available to the caller, and
@@ -15,6 +15,8 @@ import sys
 from pathlib import Path
 
 from compat import expand_path
+from release_utils import sha256
+from workspace_paths import assert_within, locate_workspace
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,7 +41,7 @@ def load_registry():
 
 
 def path_from_workspace(workspace, *parts):
-    return expand_path(workspace) / "咨询转化工作区" / "_系统" / Path(*parts)
+    return locate_workspace(workspace) / "_系统" / Path(*parts)
 
 
 def read_runtime_state(workspace):
@@ -50,22 +52,51 @@ def read_runtime_state(workspace):
         "personal_runtime": "inactive",
         "institution_facts": "unavailable",
         "team_rules": "unavailable",
+        "content_assets": "unavailable",
     }
     if not workspace:
         return state
-    workspace = expand_path(workspace)
+    workspace = locate_workspace(workspace)
     release = load_json(path_from_workspace(workspace, "发布", "active.json"), {}) or {}
     capability = load_json(path_from_workspace(workspace, "当前能力包", "active.json"), {}) or {}
     knowledge = load_json(path_from_workspace(workspace, "当前机构知识", "active.json"), {}) or {}
     personal = load_json(path_from_workspace(workspace, "个人成长", "runtime-manifest.json"), {}) or {}
-    if release.get("status") == "active" or capability.get("status") == "active":
+    content_assets = path_from_workspace(workspace, "内容资产", "approved-assets.jsonl")
+    release_valid = False
+    release_doc = {}
+    if release.get("status") == "active" and release.get("release_path") and release.get("release_hash"):
+        try:
+            release_path = assert_within(release.get("release_path"), workspace, "release_path")
+            release_doc = load_json(release_path, {}) or {}
+            release_valid = (sha256(release_path) == release.get("release_hash")
+                             and release_doc.get("release_id") == release.get("release_id"))
+        except ValueError:
+            release_valid = False
+    if release_valid or capability.get("status") == "active":
         state["team_runtime"] = "active"
         state["team_rules"] = "available"
         state["institution_facts"] = "available" if knowledge.get("status") == "active" else "unavailable"
-    elif (workspace / "咨询转化工作区" / "_系统" / "当前能力包" / "active.json").is_file():
+    elif (workspace / "_系统" / "当前能力包" / "active.json").is_file():
         state["institution_facts"] = "available" if knowledge.get("status") == "active" else "unavailable"
     if personal.get("status") == "active":
         state["personal_runtime"] = "active"
+    content_snapshot = (release_doc.get("components") or {}).get("content_runtime", {})
+    content_package = {}
+    content_valid = False
+    if release_valid and content_snapshot.get("package_path"):
+        try:
+            package_path = assert_within(content_snapshot.get("package_path"), workspace, "content_runtime_package")
+            runtime_path = assert_within(content_snapshot.get("runtime_context_path"), workspace, "content_runtime_context")
+            content_valid = (sha256(package_path) == content_snapshot.get("package_hash")
+                             and sha256(runtime_path) == content_snapshot.get("runtime_hash"))
+            if content_valid:
+                content_package = load_json(package_path, {}) or {}
+        except ValueError:
+            content_valid = False
+    if content_valid and content_package.get("asset_count", 0) > 0:
+        state["content_assets"] = "available"
+    elif content_assets.is_file() and content_assets.stat().st_size > 0:
+        state["content_assets"] = "pending_publish"
     if state["team_runtime"] == "active" and state["personal_runtime"] == "active":
         state["mode"] = "team_plus_personal"
     elif state["team_runtime"] == "active":
@@ -79,7 +110,7 @@ def infer_role(workspace, requested):
     if requested and requested != "auto":
         return requested
     if workspace:
-        workspace = expand_path(workspace)
+        workspace = locate_workspace(workspace)
         role_file = path_from_workspace(workspace, "运行时角色.json")
         role = load_json(role_file, {}) or {}
         if role.get("role") in ("manager", "frontline", "consultant"):
@@ -98,9 +129,13 @@ def score_route(text, route):
     terms = list(route.get("aliases", [])) + list(route.get("keywords", []))
     matched = [term for term in terms if contains(text, term)]
     score = sum(4 if term in route.get("aliases", []) else 1 for term in matched)
-    # Exact requests such as “费用异议模式” should beat a generic “分析” match.
-    exact_alias = any(alias in text for alias in route.get("aliases", []))
-    if exact_alias:
+    # A full natural-language alias must beat a shorter alias contained inside
+    # it, e.g. “帮我写跟进话术” should not be reduced to generic “跟进”.
+    full_alias = any(alias == text.strip() for alias in route.get("aliases", []))
+    contained_alias = any(alias in text for alias in route.get("aliases", []))
+    if full_alias:
+        score += 10
+    elif contained_alias:
         score += 5
     return score, matched
 
@@ -126,6 +161,46 @@ def select_route(text, registry, route_id=None):
     return route, matched, score
 
 
+def route_by_id(registry, route_id):
+    return next((item for item in registry.get("routes", []) if item.get("id") == route_id), None)
+
+
+def apply_intent_precedence(text, registry, route, matched, score, explicit=False):
+    """Resolve task verbs before using patient concerns as route modifiers."""
+    if explicit:
+        return route, matched, score, []
+    compact = str(text or "").replace(" ", "")
+    product_feedback = any(term in compact for term in (
+        "我要反馈", "反馈问题", "反馈一下", "提个建议", "提一个建议", "我要提建议",
+        "安装失败", "安装不了", "分析结果不准", "分析不准确", "Skill有问题", "skill有问题",
+    ))
+    employee_view = any(term in compact for term in ("查看某个咨询师", "查看咨询师", "看看咨询师", "咨询师今天", "咨询师本周", "咨询师长板", "咨询师短板", "训练进度"))
+    batch = any(term in compact for term in ("分析今天全部", "今天全部咨询", "批量分析今天", "每日全量复盘", "查看今天重点"))
+    create_verb = any(term in compact for term in ("写", "生成", "制作", "可直接发", "给我一条", "给我一版"))
+    content_object = any(term in compact for term in ("文案", "话术", "朋友圈", "科普", "私信", "评论区", "跟进内容", "回复内容", "素材"))
+    visual = any(term in compact for term in ("生图", "配图", "图片", "海报", "视觉"))
+    downstream = []
+    if product_feedback:
+        chosen = route_by_id(registry, "product_feedback")
+        return chosen, ["product_feedback_intent"], 30, downstream
+    if employee_view:
+        chosen = route_by_id(registry, "employee_review")
+        return chosen, ["employee_review_intent"], 30, downstream
+    if batch:
+        chosen = route_by_id(registry, "daily_review_factory")
+        if create_verb and content_object:
+            downstream.append("content_action")
+        if visual:
+            downstream.append("visual_content")
+        return chosen, ["batch_review_intent"], 30, downstream
+    if create_verb and content_object:
+        chosen = route_by_id(registry, "content_action")
+        if visual:
+            downstream.append("visual_content")
+        return chosen, ["content_generation_intent"], 30, downstream
+    return route, matched, score, downstream
+
+
 def confidence(score, explicit=False):
     if explicit or score >= 9:
         return "high"
@@ -134,7 +209,7 @@ def confidence(score, explicit=False):
     return "low"
 
 
-def render_route(route, matched, score, runtime, role, explicit=False):
+def render_route(route, matched, score, runtime, role, explicit=False, downstream=None):
     if not route:
         return {
             "schema_version": "1.0-route-result",
@@ -170,6 +245,7 @@ def render_route(route, matched, score, runtime, role, explicit=False):
         "message": message,
         "fallback": "conversation_diagnosis" if route.get("id") != "conversation_diagnosis" else None,
         "role": role,
+        "downstream_routes": downstream or [],
     }
 
 
@@ -198,7 +274,9 @@ def main():
         role = infer_role(workspace, args.role)
         runtime = read_runtime_state(workspace)
         route, matched, score = select_route(args.text, registry, args.route or None)
-        result = render_route(route, matched, score, runtime, role, bool(args.route))
+        route, matched, score, downstream = apply_intent_precedence(
+            args.text, registry, route, matched, score, bool(args.route))
+        result = render_route(route, matched, score, runtime, role, bool(args.route), downstream)
         result["base_runtime_manifest"] = str(BASE_RUNTIME)
     if args.format == "markdown":
         if result.get("routes") is not None:

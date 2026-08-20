@@ -8,7 +8,7 @@ import json
 import sys
 
 from compat import expand_path
-from release_utils import atomic_save_json, load_release_active, load_release_file, pointer_path, release_root
+from release_utils import atomic_save_json, load_release_active, load_release_file, pointer_path, release_root, sha256, validate_version
 
 
 def main():
@@ -21,6 +21,12 @@ def main():
     active = load_release_active(workspace)
     current_version = active.get("release_version")
     target_version = args.version
+    if target_version:
+        try:
+            target_version = validate_version(target_version)
+        except ValueError as exc:
+            print(json.dumps({"status": "rejected", "reason": str(exc)}, ensure_ascii=False))
+            return 2
     if args.previous:
         current = load_release_file(workspace, current_version) if current_version else None
         previous_id = (current or {}).get("previous_release_id")
@@ -40,15 +46,19 @@ def main():
         return 2
     for component, snapshot in (target.get("components") or {}).items():
         pointer = snapshot.get("pointer")
+        if component == "content_runtime":
+            continue
         if not pointer:
             print(json.dumps({"status": "rejected", "reason": "component_pointer_missing", "component": component}, ensure_ascii=False))
             return 2
         atomic_save_json(pointer_path(workspace, component), dict(pointer, rolled_back_at=datetime.datetime.now().isoformat()))
+    target_release_path = release_root(workspace) / "versions" / target_version / "release.json"
     active.update({
         "status": "active",
         "release_id": target.get("release_id"),
         "release_version": target_version,
-        "release_path": str(release_root(workspace) / "versions" / target_version / "release.json"),
+        "release_path": str(target_release_path),
+        "release_hash": sha256(target_release_path),
         "rolled_back_at": datetime.datetime.now().isoformat(),
     })
     atomic_save_json(release_root(workspace) / "active.json", active)
