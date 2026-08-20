@@ -73,14 +73,20 @@ def main():
     parser.add_argument("--check", action="store_true", help="verify image backend, Tesseract and language packs")
     args = parser.parse_args()
 
+    requested_langs = set(item for item in args.lang.split("+") if item)
     tesseract = shutil.which("tesseract")
     if not tesseract:
+        if args.check:
+            from slice_long_images import image_backend
+            print(json.dumps({"status": "missing_dependency", "image_backend": image_backend(),
+                              "tesseract": None, "requested_languages": sorted(requested_langs),
+                              "missing_languages": sorted(requested_langs)}, ensure_ascii=False))
+            return 2
         print("ERROR: tesseract is not installed or not on PATH", file=sys.stderr)
         return 2
     langs_process = subprocess.Popen([tesseract, "--list-langs"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     langs_stdout, _ = langs_process.communicate()
     available_langs = set(langs_stdout.decode("utf-8", "replace").splitlines())
-    requested_langs = set(item for item in args.lang.split("+") if item)
     missing_langs = sorted(requested_langs - available_langs)
     from slice_long_images import image_backend
     if args.check:
